@@ -5,6 +5,7 @@ function App() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
+  
 
   useEffect(() => {
     // Create WebSocket connection.
@@ -45,11 +46,13 @@ function App() {
   const sendMessage = () => {
     if (socket && message) {
       const timestamp = new Date().toISOString();
-      const messageObject = { message, timestamp };
+      const messageObject = { user: "jeremy", message: message, timestamp: timestamp };
       socket.send(JSON.stringify(messageObject));
+      const headers = messages.length > 0 ? Object.keys(messages[0]) : [];
       setMessage('');
     }
   };
+  const headers = messages.length > 0 ? Object.keys(messages[0]) : [];
 
   return (
     <div className="App">
@@ -65,11 +68,25 @@ function App() {
       </div>
       <div>
         <h2>Messages</h2>
-        <ul>
+        <table>
+        <thead>
+          <tr>
+            {headers.map((header) => (
+              <th key={header}>{header.charAt(0).toUpperCase() + header.slice(1)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
           {messages.map((msg, index) => (
-            <div key={index}>{msg.timestamp} - {msg.message}</div>
+            <tr key={index}>
+              {headers.map((header) => (
+                <td key={header}>{msg[header]}</td>
+              ))}
+            </tr>
           ))}
-        </ul>
+        </tbody>
+      </table>
+          
       </div>
     </div>
   );
