@@ -9,19 +9,37 @@ import { reducer } from './reducer';
 
 
 function App() {
+  const [data, setData] = useState([]);
   const [state, dispatch] = useReducer(reducer, makeData(10));
   const [filterSheet, setFilterSheet] = useState('')
   const [newUrl, setNewUrl] = useState('');
+
+useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/combined');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const result = await response.json();
+        console.log(result);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } 
+    };
+
+    fetchData();
+  }, []);
 
   useEffect(() => {
     dispatch({ type: "enable_reset" });
   }, [state.data, state.columns]);
 
-  useEffect(() => {
-    fetch(`/columns/${newUrl}`)
-      .then(response => response.json())
-      .then(data => dispatch({ type: "enable_reset" }));
-  }, [state.data, state.columns]);
+  // useEffect(() => {
+  //   fetch(`/columns/${newUrl}`)
+  //     .then(response => response.json())
+  //     .then(data => dispatch({ type: "enable_reset" }));
+  // }, [state.data, state.columns]);
 
   return (
     <div
