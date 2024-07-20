@@ -17,18 +17,26 @@ html {
   font-size: 14px;
 }
 
+/* Table Styles */
 table {
-  border: 1px solid lightgray;
+  border: 1px solid #ddd; /* Use a more neutral gray color */
+  border-collapse: collapse; /* Ensures cells don't have double borders */
+  width: 100%; /* Make the table full width by default */
 }
 
 tbody {
-  border-bottom: 1px solid lightgray;
+  border-bottom: 1px solid #ddd;
+}
+
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px; /* Increase padding for better readability */
+  text-align: left; /* Default text alignment for content */
 }
 
 th {
-  border-bottom: 1px solid lightgray;
-  border-right: 1px solid lightgray;
-  padding: 2px 4px;
+  font-weight: bold; /* Make headers stand out */
 }
 
 tfoot {

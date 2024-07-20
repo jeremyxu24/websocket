@@ -1,0 +1,75 @@
+.sidebar-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  .sidebar-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  
+  .sidebar-header {
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .divider {
+    margin: 0 20px;
+    border: none;
+    border-top: 1px solid #ccc;
+  }
+  
+  .sidebar-navigation {
+    flex-grow: 1;
+  }
+  
+  .sidebar-link {
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  
+  .sidebar-link.active {
+    position: relative;
+  }
+  
+  .sidebar-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: red;
+  }
+  
+  .sidebar-add {
+    padding: 20px;
+    border-top: 1px solid #ccc;
+  }
+  
+  .new-sheet-input {
+    width: calc(100% - 20px);
+    padding: 5px;
+    margin-bottom: 10px;
+  }
+  
+  .add-sheet-button-container {
+    text-align: right;
+  }
+  
+  .add-sheet-button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .add-sheet-button:hover {
+    background-color: #0056b3;
+  }
+  

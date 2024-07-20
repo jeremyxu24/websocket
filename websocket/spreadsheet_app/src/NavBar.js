@@ -1,93 +1,89 @@
-import { useState } from 'react';
-import { UnstyledButton, Tooltip, Title, rem } from '@mantine/core';
-import {
-  IconHome2,
-  IconGauge,
-  IconDeviceDesktopAnalytics,
-  IconFingerprint,
-  IconCalendarStats,
-  IconUser,
-  IconSettings,
-} from '@tabler/icons-react';
-import classes from './DoubleNavbar.module.css';
+import React, { useState } from 'react';
+import './sidebar.css'; // Import the CSS file
+import DocumentIcon from './img/Document';
+import ColorThemeComponent from './ColorTheme';
+import { flexRender } from '@tanstack/react-table';
 
-const mainLinksMockdata = [
-  { icon: IconHome2, label: 'Home' },
-  { icon: IconGauge, label: 'Dashboard' },
-  { icon: IconDeviceDesktopAnalytics, label: 'Analytics' },
-  { icon: IconCalendarStats, label: 'Releases' },
-  { icon: IconUser, label: 'Account' },
-  { icon: IconFingerprint, label: 'Security' },
-  { icon: IconSettings, label: 'Settings' },
-];
+function NavBar() {
+  const [filterSheet, setFilterSheet] = useState([]);
+  const [data, setData] = useState([
+    { label: 'Hubspot Fields', url: 'hubspot_fields' },
+    { label: 'Affiliate Report Summary', url: 'affiliate_report_summary' },
+    { label: 'Data Dictionary', url: 'data_dictionary' },
+    { label: 'Report #1', url: 'report_1' },
+    { label: 'Report #2', url: 'report_2' },
+    { label: 'Data Metrics', url: 'data_metrics' },
+  ]);
 
-const linksMockdata = [
-  'Security',
-  'Settings',
-  'Dashboard',
-  'Releases',
-  'Account',
-  'Orders',
-  'Clients',
-  'Databases',
-  'Pull Requests',
-  'Open Issues',
-  'Wiki pages',
-];
+  const [newLabel, setNewLabel] = useState('');
+  const [selectedSheet, setSelectedSheet] = useState('');
 
-export default function DoubleNavbar() {
-  const [active, setActive] = useState('Releases');
-  const [activeLink, setActiveLink] = useState('Settings');
+  const handleAddLabel = () => {
+    if (newLabel.trim() === '') {
+      alert('Label cannot be empty!');
+      return;
+    }
 
-  const mainLinks = mainLinksMockdata.map((link) => (
-    <Tooltip
-      label={link.label}
-      position="right"
-      withArrow
-      transitionProps={{ duration: 0 }}
-      key={link.label}
-    >
-      <UnstyledButton
-        onClick={() => setActive(link.label)}
-        className={classes.mainLink}
-        data-active={link.label === active || undefined}
-      >
-        <link.icon style={{ width: rem(22), height: rem(22) }} stroke={1.5} />
-      </UnstyledButton>
-    </Tooltip>
-  ));
+    setData((prevData) => [
+      ...prevData,
+      { label: newLabel, url: newLabel },
+    ]);
 
-  const links = linksMockdata.map((link) => (
-    <a
-      className={classes.link}
-      data-active={activeLink === link || undefined}
-      href="#"
-      onClick={(event) => {
-        event.preventDefault();
-        setActiveLink(link);
-      }}
-      key={link}
-    >
-      {link}
-    </a>
-  ));
+    // Clear input fields after adding
+    setNewLabel('');
+  };
+
+  const handleSetFilterSheet = (label, url) => {
+    setFilterSheet(label);
+    setSelectedSheet(label);
+  };
 
   return (
-    <nav className={classes.navbar}>
-      <div className={classes.wrapper}>
-        <div className={classes.aside}>
-          <div className={classes.logo}>
-          </div>
-          {mainLinks}
+    <div className="sidebar-container">
+      <div className="sidebar-content">
+        <div className="sidebar-header">
+          <div className="brand-name">AMERICOR</div>
         </div>
-        <div className={classes.main}>
-          <Title order={4} className={classes.title}>
-            {active}
-          </Title>
+        <hr className="divider" />
 
-          {links}
+        <nav className="sidebar-navigation">
+          {data.map((link) => (
+            <div 
+              key={link.url}
+              style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
+            >
+              <DocumentIcon />
+              <div
+                className={`sidebar-link ${selectedSheet === link.label ? 'active' : ''}`}
+                onClick={() => handleSetFilterSheet(link.label, link.url)}
+              >
+                {link.label}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="sidebar-add">
+          <input
+            type="text"
+            placeholder="New Sheet"
+            value={newLabel}
+            className="new-sheet-input"
+            onChange={(e) => setNewLabel(e.target.value)}
+          />
+          <div className="add-sheet-button-container">
+            <button className="add-sheet-button" onClick={handleAddLabel}>
+              + New Sheet
+            </button>
+          </div>
+        </div>
+        
+        <div style={{ marginTop: 'auto' }}>
+          <ColorThemeComponent />
         </div>
       </div>
-    </nav>
+    </div>
   );
 }
+
+export default NavBar;
