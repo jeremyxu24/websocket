@@ -1,36 +1,37 @@
-import React from "react";
-import locationType from "../type/location";
-import { useLocationStore } from "../lib/store";
+import React, { useEffect } from "react";
+import { directoryType } from "../type/directoryType";
+import { useDirectoryNavStore, useDirectoryTypeStore } from "../lib/store";
 import '../styles/style.css'
 
-export default function LocationNav() {
-    // const locations = useLocationStore((state) => state.locations)
-    const { locations, setLocation } = useLocationStore()
+export default function directoryNav() {
+    const { setLocation, location, setParentID } = useDirectoryNavStore()
+    const { setDirectoryType } = useDirectoryTypeStore()
 
     function handleOnNavClick(e: any) {
-        const newNavIndex: number = parseInt(e.currentTarget.id.split('-')[3]) + 1;
-        setLocation(newNavIndex)
+        const newNavIndex: number = parseInt(e.currentTarget.id.split('-')[3]);
+        const newNavRemoveIndex: number = newNavIndex + 1;
+        setLocation(newNavRemoveIndex)
+        setDirectoryType(location[newNavIndex].directoryType)
+        setParentID(location[newNavIndex].directoryID)
     }
 
-    console.log('locations', locations)
-
     return (
-        <div className="locationContainer d-flex">
-            {locations && locations.map((location: locationType, index: number) => {
+        <div className="directoryContainer d-flex">
+            {location && location.map((directory: directoryType, index: number) => {
                 if (index === 0) {
                     return (
-                        <div key={`location-${index}`} className="locationNavContent" id={`locationID-${location.locationID}-index-${index}`} onClick={handleOnNavClick}>
-                            {location.label}
+                        <div key={`directory-${index}`} className="directoryNavContent" id={`directoryID-${directory.directoryID}-index-${index}`} onClick={handleOnNavClick}>
+                            {directory.directoryLabel}
                         </div>
                     )
                 } else {
                     return (
-                        <div key={`location-${index}`} className="d-flex" >
-                            <div  >
+                        <div key={`directory-${index}`} className="d-flex align-item-center" >
+                            <div style={{ lineHeight: '59.5px' }}>
                                 {`>`}
                             </div>
-                            <div className="locationNavContent" id={`locationID-${location.locationID}-index-${index}`} onClick={handleOnNavClick}>
-                                {location.label}
+                            <div className="directoryNavContent" id={`directoryID-${directory.directoryID}-index-${index}`} onClick={handleOnNavClick}>
+                                {directory.sheetID ? directory.sheetLabel : directory.directoryLabel}
                             </div>
                         </div>
                     )

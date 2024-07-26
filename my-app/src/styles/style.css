@@ -383,27 +383,38 @@ html {
 }
 
 .app-data-table-container {
-    width: calc(100vw-300px);
+    width: 100%;
+    max-width: calc(100vw-300px);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 90vh;
 }
 
-.locationContainer {
-    width: calc(100vw - 300px);
+.directoryContainer {
+    width: 100%;
+    border-bottom: 1px solid gray;
+    overflow-x: auto;
+    align-items: center;
+    max-height: 59.5px;
+    text-wrap: nowrap;
+}
+
+.directoryNavContent {
     padding: 20px;
     text-align: left;
-    border-bottom: 1px solid gray;
 }
 
-.locationNavContent:hover {
+.directoryNavContent:hover {
     text-decoration: underline;
     cursor: pointer;
 }
 
-.subFolderContainer {
+.subDirContainer {
     background-color: #ffffff;
     padding: 25px;
 }
 
-.subFolderContentDiv {
+.subDirContentDiv {
     text-align: center;
     flex-direction: column;
     width: 200px;
@@ -414,9 +425,21 @@ html {
     transition: scale 1s ease-in-out;
 }
 
-.subFolderContentDiv:hover {
+.subDirContentDiv:hover {
     border: 1px solid lightblue;
     border-radius: 15px;
     cursor: pointer;
     transform: scale(1.1);
+}
+
+.directoryIcon {
+    background: url("../assets/img/icons8-folder-100.png");
+    width: 100px;
+    height: 100px;
+}
+
+.sheetIcon {
+    background: url("../assets/img/icons8-sheet-100.png");
+    width: 100px;
+    height: 100px;
 }

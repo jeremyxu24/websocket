@@ -1,38 +1,54 @@
 import React, { useState } from "react";
 import '../styles/style.css'; // Import the CSS file
 import DocumentIcon from "../assets/img/Document";
-import { useSheetStore } from "../lib/store";
+import { newDirectoryType, newSheetType } from "../type/directoryType";
+import useAddSubDirectory from "../hooks/useAddSubDirectory";
+import { useDirectoryNavStore, useDirectoryTypeStore } from "../lib/store";
+import useAddSheet from "../hooks/useAddSheet";
 
-type sheet = {
-    "label": string,
-    "url": string
-}
-
-export default function SheetSideBar({ filterSheet, setFilterSheet, setNewUrl }) {
-    const sheets: sheet[] = useSheetStore((state) => state.sheet);
-    const selectedSheet: string = useSheetStore((state) => state.selectedSheet);
-    const addSheet: (value: sheet) => void = useSheetStore((state) => state.addSheet)
-    const setSelectedSheet: (value: string) => void = useSheetStore((state) => state.setSelectedSheet)
-
+export default function SheetSideBar() {
     const [newLabel, setNewLabel] = useState('');
+    const { location } = useDirectoryNavStore();
+    const { type } = useDirectoryTypeStore();
 
-    const handleAddLabel = () => {
+    const newDirectoryMutation = useAddSubDirectory();
+    const newSheetMutation = useAddSheet();
+
+    const handleAddNewSheet = () => {
         if (newLabel.trim() === '') {
             alert('Label cannot be empty!');
             return;
         }
 
-        addSheet({ label: newLabel, url: newLabel })
+        const newSheet: newSheetType = {
+            directoryID: location[location.length - 1].directoryID,
+            sheetLabel: newLabel.trim(),
+            sheetURL: newLabel.trim().replace(' ', '_')
+        };
 
-        // Clear input fields after adding
+        newSheetMutation.mutate(newSheet)
+
         setNewLabel('');
-        setNewUrl('');
     };
 
-    const handleSetFilterSheet = (label: any, url: any) => {
-        setFilterSheet(label);
-        setNewUrl(url);
-        setSelectedSheet(label)
+    const handleAddNewDirectory = () => {
+        if (newLabel.trim() === '') {
+            alert('Label cannot be empty!');
+            return;
+        }
+
+        const newDirectory: newDirectoryType = {
+            directoryLabel: newLabel.trim(),
+            directoryType: 'directory',
+            directoryURL: newLabel.trim().replace(' ', '_'),
+            parentID: location[location.length - 1].directoryID
+        };
+
+        newDirectoryMutation.mutate(newDirectory)
+
+        // Clear input fields after adding
+        // refetchDirectoryHandle()
+        setNewLabel('');
     };
 
     return (
@@ -43,37 +59,26 @@ export default function SheetSideBar({ filterSheet, setFilterSheet, setNewUrl })
                 </div>
                 <hr className="divider" />
 
-                <nav className="sidebar-navigation">
-                    {sheets ? sheets.map((link: sheet) => ( // data
-                        <div
-                            key={link.url}
-                            style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
-                        >
-                            <DocumentIcon />
-                            <div
-                                className={`sidebar-link ${selectedSheet === link.label ? 'active' : ''}`}
-                                onClick={() => handleSetFilterSheet(link.label, link.url)}
-                            >
-                                {link.label}
-                            </div>
+                {type === "directory" ?
+                    <div className="sidebar-add">
+                        <input
+                            type="text"
+                            placeholder="New..."
+                            value={newLabel}
+                            onChange={(e) => setNewLabel(e.target.value)}
+                            className="new-sheet-input"
+                            style={{ width: '100%' }}
+                        />
+                        <div className="add-sheet-button-container">
+                            <button className="add-sheet-button" onClick={handleAddNewDirectory} >
+                                + New Directory
+                            </button>
+                            <button className="add-sheet-button" onClick={handleAddNewSheet} >
+                                + New Sheet
+                            </button>
                         </div>
-                    )) : <></>}
-                </nav>
-
-                <div className="sidebar-add">
-                    <input
-                        type="text"
-                        placeholder="New Sheet"
-                        value={newLabel}
-                        onChange={(e) => setNewLabel(e.target.value)}
-                        className="new-sheet-input"
-                    />
-                    <div className="add-sheet-button-container">
-                        <button className="add-sheet-button" onClick={handleAddLabel}>
-                            + New Sheet
-                        </button>
                     </div>
-                </div>
+                    : <></>}
             </div>
         </div>
     );
