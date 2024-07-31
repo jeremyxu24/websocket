@@ -3,7 +3,7 @@ import { useDirectoryNavStore, useDirectoryTypeStore } from "../lib/store";
 import { directoryType } from '../type/directoryType'
 
 export default function SubFolderContainer({ subDirectories }) {
-    const { addLocation, setParentID } = useDirectoryNavStore();
+    const { addLocation, setParentID, setSheetID } = useDirectoryNavStore();
     const { setDirectoryType } = useDirectoryTypeStore();
 
     function handleSubDirectoryOnClick(e: any) {
@@ -12,9 +12,11 @@ export default function SubFolderContainer({ subDirectories }) {
         const toBeAddedDirectory = subDirectoriesCopy.splice(subDirectoryIndex, 1)
         const newDirectoryType = toBeAddedDirectory[0].sheetID ? "sheet" : "directory";
         const newParentID = toBeAddedDirectory[0].directoryID
+        const newSheetID = toBeAddedDirectory[0].sheetID
         addLocation(...toBeAddedDirectory)
         setDirectoryType(newDirectoryType)
         setParentID(newParentID)
+        setSheetID(newSheetID)
     }
 
     function subFolderOrSheet(sheetID: number | null) {

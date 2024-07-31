@@ -256,6 +256,18 @@ html {
     display: flex;
 }
 
+.justify-content-center {
+    justify-content: center;
+}
+
+.gap-2 {
+    gap: 8px;
+}
+
+.padding-2 {
+    padding: 8px;
+}
+
 .cursor-default {
     cursor: default;
 }
@@ -300,6 +312,7 @@ html {
     background-color: #1f2937;
     /* Example color */
     padding: 2rem;
+    color: #ffffff;
 }
 
 .sidebar-content {
@@ -442,4 +455,122 @@ html {
     background: url("../assets/img/icons8-sheet-100.png");
     width: 100px;
     height: 100px;
+}
+
+html {
+    font-family: sans-serif;
+    font-size: 14px;
+}
+
+table {
+    border: 1px solid lightgray;
+    border-spacing: 0;
+}
+
+tbody {
+    border-bottom: 1px solid lightgray;
+}
+
+th {
+    border-bottom: 1px solid lightgray;
+    border-right: 1px solid lightgray;
+    padding: 2px 4px;
+    text-align: left;
+}
+
+th div {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+th button {
+    padding: 1rem;
+    cursor: grab;
+}
+
+td {
+    border-right: 1px solid lightgray;
+    padding: 2px 4px;
+}
+
+td:last-child {
+    border-right: 0;
+}
+
+tfoot {
+    color: gray;
+}
+
+tfoot th {
+    font-weight: normal;
+}
+
+.columnsContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    color: #ffffff;
+    width: 100%;
+    text-align: center;
+    min-height: 200px;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.columnCard {
+    width: 100%;
+    height: fit-content;
+    padding: 5px;
+    border-radius: 10px;
+    margin: 5px 0px;
+    color: #000000;
+}
+
+.add-row {
+    color: #9e9e9e;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-bottom: 1px solid lightgray;
+}
+
+.add-row:hover {
+    background-color: #f5f5f5;
+}
+
+.resizer {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 5px;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+}
+
+.resizer.ltr {
+    right: 0;
+}
+
+.resizer.rtl {
+    left: 0;
+}
+
+.resizer.isResizing {
+    background: blue;
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .resizer {
+        opacity: 0;
+    }
+
+    *:hover>.resizer {
+        opacity: 1;
+    }
 }

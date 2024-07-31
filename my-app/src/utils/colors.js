@@ -14,3 +14,11 @@ export function grey(value) {
 
     return reference[value];
 }
+
+export const columnColor = {
+    String: '#CCD5AE',
+    "Number/Float": '#E9EDC9',
+    Array: "#FEFAE0",
+    Date: "#FAEDCD",
+    Datetime: "#D4A373",
+}

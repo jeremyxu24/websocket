@@ -35,6 +35,7 @@ export const useDirectoryTypeStore = create((set) => ({
 export const useDirectoryNavStore = create((set) => ({
     parentID: 1,
     location: [{ directoryLabel: 'Main', directoryID: 1, directoryType: 'directory' }],
+    sheetID: null,
     setLocation: (index) => set((state) => {
         const locationCopy = [...state.location]
         locationCopy.splice(index)
@@ -42,7 +43,9 @@ export const useDirectoryNavStore = create((set) => ({
         return { location: locationCopy }
     }),
     addLocation: (value) => set((state) => ({ location: [...state.location, value] })),
-    setParentID: (value) => set({ parentID: value })
+    setParentID: (value) => set({ parentID: value }),
+    setSheetID: (value) => set({ sheetID: value }),
+    resetSheetID: () => set({ sheetID: null })
 }))
 
 // category sheet table

@@ -1,4 +1,4 @@
-// API for fetching directories
+// API for posting new directories
 
 export function postNewDirectory(newDirectory) {
     const req = {
