@@ -1,4 +1,4 @@
-import React, { useState, } from "react";
+import React, { useEffect, useMemo, useState, } from "react";
 import '../styles/style.css';
 import '../styles/tableStyle.css'
 import { ColumnDef, getCoreRowModel, useReactTable, ColumnResizeMode, ColumnResizeDirection, RowData, getFilteredRowModel, getPaginationRowModel, ColumnFiltersState, getSortedRowModel, } from '@tanstack/react-table'
@@ -9,54 +9,25 @@ import useFetchSheetData from '../hooks/useFetchSheetData';
 import ColumnFilter from './columnFilter';
 import DraggableTableHeader from './draggableHeader';
 import DragAlongCell from './dragAlongCell';
+import AddColumnPopper from "./addColumnPopper";
+import useAddRowToSheet from "../hooks/useAddRowToSheet";
+import Tooltip from "./tooltip";
 
-export type Person = {
-    firstName: string
-    lastName: string
-    age: number
-    visits: number
-    progress: number
-    status: 'relationship' | 'complicated' | 'single'
-    subRows?: Person[]
+type columnType = {
+    columnID: number,
+    columnLabel: string,
+    datatype: string,
+    colSheetID?: number
 }
 
-const newPerson = (): Person => {
-    return {
-        firstName: "John",
-        lastName: "Doe",
-        age: 25,
-        visits: 255,
-        progress: 59,
-        status: 'complicated',
-    }
+type columnDefType = {
+    accessorKey: string;
+    id: string;
+    header: string;
+    datatype: string;
+    columnID: number;
+    colSheetID: number;
 }
-
-const defaultData: Person[] = [
-    {
-        firstName: 'tanner',
-        lastName: 'linsley',
-        age: 24,
-        visits: 100,
-        status: 'relationship',
-        progress: 50,
-    },
-    {
-        firstName: 'tandy',
-        lastName: 'miller',
-        age: 40,
-        visits: 40,
-        status: 'single',
-        progress: 80,
-    },
-    {
-        firstName: 'joe',
-        lastName: 'dirte',
-        age: 45,
-        visits: 20,
-        status: 'complicated',
-        progress: 10,
-    },
-]
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
@@ -82,11 +53,13 @@ function useSkipper() {
 
 export default function DataTable({ columnData }) {
     const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData();
-    // console.log('sheetData', sheetData)
+    const { newRowMutateIsError, newRowMutate, tooltipRowVisible, newRowMutateIsSuccess, newRowMutateIsPending, newrowMutateError } = useAddRowToSheet();
+
+    const [rowColResID, setRowColResID] = useState<{ [key: string]: number | null } | {}>({})
 
     // Give our default column cell renderer editing superpowers!
-    const defaultColumn: Partial<ColumnDef<Person>> = {
-        cell: ({ getValue, row: { index }, column: { id }, table }) => {
+    const defaultColumn: Partial<ColumnDef<columnDefType>> = {
+        cell: ({ getValue, row: { index, original }, column: { id, columnDef }, table }) => {
             const initialValue = getValue()
             // We need to keep and update the state of the cell normally
             const [value, setValue] = React.useState(initialValue)
@@ -94,6 +67,11 @@ export default function DataTable({ columnData }) {
             // When the input is blurred, we'll call our table meta's updateData function
             const onBlur = () => {
                 table.options.meta?.updateData(index, id, value)
+                const { rowID } = original;
+                const { colSheetID } = columnDef
+                const selectedColSheetRowID = `colSheet-${colSheetID}-row-${rowID}`
+                console.log('selectedColSheetRowID', selectedColSheetRowID)
+                console.log('selectedColSheetRowID-Value', rowColResID[selectedColSheetRowID])
             }
 
             // If the initialValue is changed external, sync it up with our state
@@ -111,55 +89,62 @@ export default function DataTable({ columnData }) {
         },
     }
 
-    const columns = React.useMemo<ColumnDef<Person>[]>(
-        () => [
-            {
-                accessorKey: 'firstName',
-                id: 'firstName',
-                footer: props => props.column.id,
-            },
-            {
-                accessorFn: row => row.lastName,
-                id: 'lastName',
-                header: () => <span>Last Name</span>,
-                footer: props => props.column.id,
-            },
-            {
-                accessorKey: 'age',
-                id: 'age',
-                header: () => 'Age',
-                footer: props => props.column.id,
-            },
-            {
-                accessorKey: 'visits',
-                id: 'visits',
-                header: () => <span>Visits</span>,
-                footer: props => props.column.id,
-            },
-            {
-                accessorKey: 'status',
-                id: 'status',
-                header: 'Status',
-                footer: props => props.column.id,
-            },
-            {
-                accessorKey: 'progress',
-                id: 'progress',
-                header: 'Profile Progress',
-                footer: props => props.column.id,
-            },
-        ],
-        []
-    )
+    const [columns, setColumns] = useState<ColumnDef<columnDefType>[]>([])
+    const [data, setData] = React.useState<any>([])
+
+    useEffect(() => {
+        if (!sheetData) setColumns([])
+        else if (sheetData.columnData.length === 0) setColumns([])
+        else {
+            const formatedColumns = sheetData.columnData.reduce((acc: columnDefType[], column: columnType) => {
+                return ([...acc, { accessorKey: `${column.columnLabel.trim().replace(' ', '_')}`, id: `${column.columnLabel.trim().replace(' ', '_')}`, header: column.columnLabel, datatype: column.datatype, columnID: column.columnID, colSheetID: column.colSheetID }])
+            }, [])
+            setColumns(formatedColumns)
+        }
+        if (!sheetData) {
+            setData([])
+            setRowColResID({})
+        }
+        else if (sheetData.responses.length === 0) {
+            setData([])
+            setRowColResID({})
+        }
+        else {
+            // setData
+            let transformedObject: unknown[] = [];
+            sheetData.responses.forEach((row: { responseData: { columnLabel: string | null, rowNumber: number | null, value: string | null, responseID: number | null }[], rowID: number | null }) => {
+                const newRow = Object.fromEntries(row.responseData.map((row) => {
+                    const newKey = `${row.columnLabel?.replace(' ', '_')}`
+                    return [newKey, row.value ? row.value : '']
+                }))
+                transformedObject.push({ ...newRow, rowID: row.rowID })
+            })
+            setData(transformedObject)
+
+            // setRowColResID
+            const transformedObjectResID = {};
+            for (let i = 0; i < sheetData.columnData.length; i++) {
+                for (let j = 0; j < sheetData.responses.length; j++) {
+                    // key, value of colsheetid
+                    const colSheetID = sheetData.columnData[i].colSheetID;
+                    // rowID value
+                    const rowIDValue = sheetData.responses[j].rowID;
+                    const newValue = [`colSheet-${colSheetID}-row-${rowIDValue}`, sheetData.responses[j].responseData[i].responseID]
+                    transformedObjectResID[newValue[0]] = newValue[1]
+                }
+            }
+
+            setRowColResID(transformedObjectResID)
+        }
+    }, [sheetData])
+
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const [columnResizeMode] = useState<ColumnResizeMode>('onChange')
     const [columnResizeDirection] = useState<ColumnResizeDirection>('ltr')
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
 
-    const [data, setData] = React.useState(() => [...defaultData])
-    // console.log('data', data)
-
     const [columnOrder, setColumnOrder] = React.useState<string[]>(() => columns.map(c => c.id!))
+    const [popperDisplayState, setPopperDisplayState] = useState<boolean>(false)
 
     const table = useReactTable({
         data,
@@ -185,8 +170,8 @@ export default function DataTable({ columnData }) {
             updateData: (rowIndex, columnId, value) => {
                 // Skip page index reset until after next rerender
                 skipAutoResetPageIndex()
-                setData(old =>
-                    old.map((row, index) => {
+                setData((old: any) =>
+                    old.map((row: any, index: number) => {
                         if (index === rowIndex) {
                             return {
                                 ...old[rowIndex]!,
@@ -222,7 +207,8 @@ export default function DataTable({ columnData }) {
     )
 
     function handleAddRow() {
-        setData((prev) => ([...prev, newPerson()]))
+        const newRow = { rowNumber: data.length + 1 }
+        newRowMutate(newRow)
     }
 
     if (isPending) return 'Loading...'
@@ -246,29 +232,32 @@ export default function DataTable({ columnData }) {
                     }}>
                         <thead>
                             {table.getHeaderGroups().map(headerGroup => (
-                                <>
-                                    <tr key={headerGroup.id}>
-                                        <th className='add-column'>Add +</th>
-                                        <SortableContext
-                                            items={columnOrder}
-                                            strategy={horizontalListSortingStrategy}
-                                        >
-                                            {headerGroup.headers.map(header => (
-                                                <DraggableTableHeader key={header.id} header={header} table={table} columnResizeMode={columnResizeMode} />
-                                            ))}
-                                        </SortableContext>
-                                    </tr>
-                                    <tr>
-                                        <th>#</th>
+                                <tr key={headerGroup.id}>
+                                    <th className='add-column' onClick={() => setPopperDisplayState(true)}>+ column</th>
+                                    <SortableContext
+                                        items={columnOrder}
+                                        strategy={horizontalListSortingStrategy}
+                                    >
                                         {headerGroup.headers.map(header => (
-                                            header.column.getCanFilter() ? (
-                                                <th>
-                                                    <ColumnFilter column={header.column}
-                                                        table={table} />
-                                                </th>) : null
+                                            <DraggableTableHeader key={header.id} header={header} table={table} columnResizeMode={columnResizeMode} />
                                         ))}
-                                    </tr>
-                                </>
+                                    </SortableContext>
+                                </tr>
+                            ))}
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={`filter-${headerGroup.id}`}>
+                                    <th>#</th>
+                                    {headerGroup.headers.map((header, index) => {
+                                        return (
+                                            // header.column.getCanFilter() ? (
+                                            <th key={`filter-${index}`}>
+                                                <ColumnFilter column={header.column}
+                                                    table={table} />
+                                            </th>
+                                            // ) : null
+                                        )
+                                    })}
+                                </tr>
                             ))}
                         </thead>
                         <tbody>
@@ -288,9 +277,14 @@ export default function DataTable({ columnData }) {
                             ))}
                         </tbody>
                     </table>
-                    <div className='add-row' onClick={handleAddRow}>
-                        + New
-                    </div>
+                    <Tooltip message={''} visible={tooltipRowVisible} />
+                    {
+                        newRowMutateIsPending ?
+                            <div>Adding new row...</div> :
+                            <div className='add-row' onClick={handleAddRow}>
+                                + New
+                            </div>
+                    }
                 </div>
             </DndContext>
             <div className="d-flex padding-2 gap-2">
@@ -355,6 +349,7 @@ export default function DataTable({ columnData }) {
                 </select>
             </div>
             <div>{table.getRowModel().rows.length} Rows</div>
+            <AddColumnPopper columns={columnData} existColumns={columns} popperDisplayState={popperDisplayState} setPopperDisplayState={setPopperDisplayState} maxExistColumns={columns.length} />
         </>
     )
 }

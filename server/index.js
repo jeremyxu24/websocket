@@ -11,13 +11,14 @@ app.use(express.json())
 
 app.get('/api/sheet/get/:sheetID', (req, res, next) => {
     const { sheetID } = req.params;
-    const query = `SELECT s.sheetID, s.directoryID, s.sheetLabel, s.sheetURL, cs.colSheetID, cs.columnID, c.columnLabel, c.datatype, r.rowID, r.rowNumber, rp.value, rp.responseID  
+    const query = `SELECT s.sheetID, s.directoryID, s.sheetLabel, s.sheetURL, cs.colSheetID, cs.columnID, c.columnLabel, c.datatype, cs.positionIndex, r.rowID, r.rowNumber, rp.value, rp.responseID
     FROM spreadsheet.sheet AS s 
     LEFT JOIN spreadsheet.colSheetRel AS cs ON cs.sheetID = s.sheetID 
     LEFT JOIN spreadsheet.column AS c ON c.columnID = cs.columnID 
     LEFT JOIN spreadsheet.row AS r ON r.sheetID = s.sheetID 
     LEFT JOIN spreadsheet.response AS rp ON rp.colSheetID = cs.colSheetID AND rp.rowID = r.rowID 
-    WHERE s.sheetID = ?`
+    WHERE s.sheetID = ?
+    ORDER BY cs.positionIndex ASC, rowID ASC`
     const params = [parseInt(sheetID)]
     mySQLConnection.query(query, params, (err, results) => {
         if (err) {
@@ -25,8 +26,40 @@ app.get('/api/sheet/get/:sheetID', (req, res, next) => {
             res.status(500).json({ message: 'Bad connection' })
             return
         }
-        // console.log(results)
-        res.status(200).json(results)
+        const rowIDs = results.map((row) => row.rowID)
+        const uniqueRowIDs = [... new Set(rowIDs)]
+        // extract column data
+        // Function to extract key-value pairs from specified columns
+        function extractUniqueKeyValuePairs(data, columns) {
+            const result = data.map(row => {
+                const obj = {};
+                columns.forEach(col => obj[col] = row[col]);
+                return obj;
+            });
+            // Remove duplicates
+            const uniqueResult = Array.from(new Set(result.map(JSON.stringify))).map(JSON.parse);
+            return uniqueResult;
+        }
+        // Specify the columns to extract
+        const columnsToExtract = ['columnID', 'columnLabel', 'datatype', 'colSheetID'];
+        const columnData = extractUniqueKeyValuePairs(results, columnsToExtract);
+
+        // extract response data
+        // reformat for responses by row
+        let responseData = [];
+        for (let i = 0; i < uniqueRowIDs.length; i++) {
+            responseData.push({ rowID: uniqueRowIDs[i], responseData: [] })
+        }
+        for (let j = 0; j < responseData.length; j++) {
+            results.forEach((row) => {
+                if (row.rowID === responseData[j].rowID) {
+                    responseData[j].responseData.push({ columnID: row.columnID, columnLabel: row.columnLabel, rowNumber: row.rowNumber, value: row.value, responseID: row.responseID })
+                }
+            })
+            console.log('resData', responseData[j].responseData)
+        }
+        const formattedResData = { sheetID: results[0].sheetID, sheetLabel: results[0].sheetLabel, sheetURL: results[0].sheetURL, columnData: columnData, responses: responseData }
+        res.status(200).json(formattedResData)
     })
 })
 
@@ -78,7 +111,6 @@ app.post('/api/directory/create/newDirectory', (req, res, next) => {
 })
 
 app.post('/api/directory/create/newSheet', (req, res, next) => {
-    console.log('new sheet')
     const { directoryID, sheetLabel, sheetURL } = req.body;
     const query = `INSERT INTO spreadsheet.sheet (sheetLabel, sheetURL, directoryID)
 	VALUES (?, ?, ?)`;
@@ -95,7 +127,6 @@ app.post('/api/directory/create/newSheet', (req, res, next) => {
 
 app.get('/api/directory/get/:parentID', (req, res, next) => {
     const { parentID } = req.params;
-    console.log('parentID', parentID)
     const query = `
         select d.directoryID, d.directoryLabel, d.directoryURL, d.directoryType, d.parentID, s.sheetID, s.sheetLabel, s.sheetURL
         from spreadsheet.directory as d
@@ -112,6 +143,74 @@ app.get('/api/directory/get/:parentID', (req, res, next) => {
         res.status(200).json(results)
     })
     // mySQLConnection.end()
+})
+
+app.post('/api/sheet/create/newColumnToSheet', (req, res, next) => {
+    const { sheetID, selectedColumnID, selectedIndex } = req.body;
+    // check if column exist in this sheet to prevent duplicate
+    const checkingQuery = `SELECT colSheetID FROM spreadsheet.colSheetRel 
+    WHERE sheetID = ?
+    AND columnID = ?`;
+    const checkingParams = [sheetID, selectedColumnID];
+    mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        if (results.length > 0) {
+            return res.status(409).json({ message: 'Duplicate column found in record' })
+        }
+        // shift all existing columns after given positionIndex by 1 to make space for new column 
+        const query = `
+        UPDATE spreadsheet.colSheetRel
+            SET positionIndex = positionIndex + 1
+            WHERE sheetID = ?
+            AND positionIndex >= ?;
+        INSERT INTO spreadsheet.colSheetRel (sheetID, columnID, positionIndex)
+            VALUES (?, ?, ?);`;
+        const params = [sheetID, selectedIndex, sheetID, selectedColumnID, selectedIndex];
+        mySQLConnection.query(query, params, (err, results) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
+                console.log(err)
+                res.status(500).json({ message: 'Bad connection' })
+            }
+            res.status(201).json(results)
+        })
+    })
+})
+
+app.post('/api/sheet/create/newRowToSheet', (req, res, next) => {
+    const { sheetID, rowNumber } = req.body;
+    console.log('sheetID', sheetID)
+    console.log('rowNumber', rowNumber)
+    // check if column exist in this sheet to prevent duplicate
+    const checkingQuery = `SELECT rowID FROM spreadsheet.row 
+    WHERE sheetID = ?
+    AND rowNumber = ?`;
+    const checkingParams = [sheetID, rowNumber];
+    mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        if (results.length > 0) {
+            return res.status(409).json({ message: 'Duplicate column found in record' })
+        }
+        // shift all existing columns after given positionIndex by 1 to make space for new column 
+        const query = `
+        INSERT INTO spreadsheet.row (sheetID, rowNumber)
+            VALUES (?, ?);`;
+        const params = [sheetID, rowNumber];
+        mySQLConnection.query(query, params, (err, results) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
+                console.log(err)
+                res.status(500).json({ message: 'Bad connection' })
+            }
+            res.status(201).json(results)
+        })
+    })
 })
 
 app.listen(port, () => {

@@ -1,5 +1,4 @@
-import React from 'react'
-
+import React from 'react';
 import {
     Column,
     Table,
@@ -10,11 +9,11 @@ import {
     getPaginationRowModel,
     flexRender,
     RowData,
-} from '@tanstack/react-table'
+} from '@tanstack/react-table';
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
-        updateData: (rowIndex: number, columnId: string, value: unknown) => void
+        updateData: (rowIndex: number, columnId: string, value: unknown) => void;
     }
 }
 
@@ -28,84 +27,81 @@ export type Person = {
     subRows?: Person[]
 }
 
+const range = (len: number) => {
+    const arr: number[] = []
+    for (let i = 0; i < len; i++) {
+        arr.push(i)
+    }
+    return arr
+}
+
 const newPerson = (): Person => {
     return {
-        firstName: "John",
-        lastName: "Doe",
-        age: 25,
-        visits: 255,
-        progress: 59,
-        status: 'complicated',
+        firstName: 'John',
+        lastName: 'Doe',
+        age: 40,
+        visits: 244,
+        progress: 50,
+        status: 'relationship',
     }
 }
 
-const defaultData: Person[] = [
-    {
-        firstName: 'tanner',
-        lastName: 'linsley',
-        age: 24,
-        visits: 100,
-        status: 'relationship',
-        progress: 50,
-    },
-    {
-        firstName: 'tandy',
-        lastName: 'miller',
-        age: 40,
-        visits: 40,
-        status: 'single',
-        progress: 80,
-    },
-    {
-        firstName: 'joe',
-        lastName: 'dirte',
-        age: 45,
-        visits: 20,
-        status: 'complicated',
-        progress: 10,
-    },
-]
+function makeData(...lens: number[]) {
+    const makeDataLevel = (depth = 0): Person[] => {
+        const len = lens[depth]!
+        return range(len).map((d): Person => {
+            return {
+                ...newPerson(),
+                subRows: lens[depth + 1] ? makeDataLevel(depth + 1) : undefined,
+            }
+        })
+    }
 
+    return makeDataLevel()
+}
+
+
+// Give our default column cell renderer editing superpowers!
 const defaultColumn: Partial<ColumnDef<Person>> = {
     cell: ({ getValue, row: { index }, column: { id }, table }) => {
-        const initialValue = getValue()
+        const initialValue = getValue();
         // We need to keep and update the state of the cell normally
-        const [value, setValue] = React.useState(initialValue)
+        const [value, setValue] = React.useState(initialValue);
 
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
-        }
+            table.options.meta?.updateData(index, id, value);
+        };
 
         // If the initialValue is changed external, sync it up with our state
         React.useEffect(() => {
-            setValue(initialValue)
-        }, [initialValue])
+            setValue(initialValue);
+        }, [initialValue]);
 
         return (
             <input
                 value={value as string}
-                onChange={e => setValue(e.target.value)}
+                onChange={(e) => setValue(e.target.value)}
                 onBlur={onBlur}
             />
-        )
+        );
     },
-}
+};
 
 function useSkipper() {
-    const shouldSkipRef = React.useRef(true)
-    const shouldSkip = shouldSkipRef.current
+    const shouldSkipRef = React.useRef(true);
+    const shouldSkip = shouldSkipRef.current;
 
     // Wrap a function with this to skip a pagination reset temporarily
     const skip = React.useCallback(() => {
-        shouldSkipRef.current = false
-    }, [])
+        shouldSkipRef.current = false;
+    }, []);
 
     React.useEffect(() => {
-        shouldSkipRef.current = true
-    })
+        shouldSkipRef.current = true;
+    });
 
-    return [shouldSkip, skip] as const
+    return [shouldSkip, skip] as const;
 }
 
 export default function TestingComponent() {
@@ -114,28 +110,28 @@ export default function TestingComponent() {
         () => [
             {
                 header: 'Name',
-                footer: props => props.column.id,
+                footer: (props) => props.column.id,
                 columns: [
                     {
                         accessorKey: 'firstName',
-                        footer: props => props.column.id,
+                        footer: (props) => props.column.id,
                     },
                     {
-                        accessorFn: row => row.lastName,
+                        accessorFn: (row) => row.lastName,
                         id: 'lastName',
                         header: () => <span>Last Name</span>,
-                        footer: props => props.column.id,
+                        footer: (props) => props.column.id,
                     },
                 ],
             },
             {
                 header: 'Info',
-                footer: props => props.column.id,
+                footer: (props) => props.column.id,
                 columns: [
                     {
                         accessorKey: 'age',
                         header: () => 'Age',
-                        footer: props => props.column.id,
+                        footer: (props) => props.column.id,
                     },
                     {
                         header: 'More Info',
@@ -143,17 +139,17 @@ export default function TestingComponent() {
                             {
                                 accessorKey: 'visits',
                                 header: () => <span>Visits</span>,
-                                footer: props => props.column.id,
+                                footer: (props) => props.column.id,
                             },
                             {
                                 accessorKey: 'status',
                                 header: 'Status',
-                                footer: props => props.column.id,
+                                footer: (props) => props.column.id,
                             },
                             {
                                 accessorKey: 'progress',
                                 header: 'Profile Progress',
-                                footer: props => props.column.id,
+                                footer: (props) => props.column.id,
                             },
                         ],
                     },
@@ -161,11 +157,11 @@ export default function TestingComponent() {
             },
         ],
         []
-    )
+    );
 
-    const [data, setData] = React.useState(() => [...defaultData])
+    const [data, setData] = React.useState(() => makeData(5));
 
-    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper();
 
     const table = useReactTable({
         data,
@@ -179,31 +175,30 @@ export default function TestingComponent() {
         meta: {
             updateData: (rowIndex, columnId, value) => {
                 // Skip page index reset until after next rerender
-                skipAutoResetPageIndex()
-                setData(old =>
+                skipAutoResetPageIndex();
+                setData((old) =>
                     old.map((row, index) => {
                         if (index === rowIndex) {
                             return {
                                 ...old[rowIndex]!,
                                 [columnId]: value,
-                            }
+                            };
                         }
-                        return row
+                        return row;
                     })
-                )
+                );
             },
         },
-        debugTable: true,
-    })
+    });
 
     return (
         <div className="p-2">
             <div className="h-2" />
             <table>
                 <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
+                    {table.getHeaderGroups().map((headerGroup) => (
                         <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => {
+                            {headerGroup.headers.map((header) => {
                                 return (
                                     <th key={header.id} colSpan={header.colSpan}>
                                         {header.isPlaceholder ? null : (
@@ -220,16 +215,16 @@ export default function TestingComponent() {
                                             </div>
                                         )}
                                     </th>
-                                )
+                                );
                             })}
                         </tr>
                     ))}
                 </thead>
                 <tbody>
-                    {table.getRowModel().rows.map(row => {
+                    {table.getRowModel().rows.map((row) => {
                         return (
                             <tr key={row.id}>
-                                {row.getVisibleCells().map(cell => {
+                                {row.getVisibleCells().map((cell) => {
                                     return (
                                         <td key={cell.id}>
                                             {flexRender(
@@ -237,10 +232,10 @@ export default function TestingComponent() {
                                                 cell.getContext()
                                             )}
                                         </td>
-                                    )
+                                    );
                                 })}
                             </tr>
-                        )
+                        );
                     })}
                 </tbody>
             </table>
@@ -285,50 +280,51 @@ export default function TestingComponent() {
                     | Go to page:
                     <input
                         type="number"
+                        min="1"
+                        max={table.getPageCount()}
                         defaultValue={table.getState().pagination.pageIndex + 1}
-                        onChange={e => {
-                            const page = e.target.value ? Number(e.target.value) - 1 : 0
-                            table.setPageIndex(page)
+                        onChange={(e) => {
+                            const page = e.target.value ? Number(e.target.value) - 1 : 0;
+                            table.setPageIndex(page);
                         }}
                         className="border p-1 rounded w-16"
                     />
                 </span>
                 <select
                     value={table.getState().pagination.pageSize}
-                    onChange={e => {
-                        table.setPageSize(Number(e.target.value))
+                    onChange={(e) => {
+                        table.setPageSize(Number(e.target.value));
                     }}
                 >
-                    {[10, 20, 30, 40, 50].map(pageSize => (
+                    {[10, 20, 30, 40, 50].map((pageSize) => (
                         <option key={pageSize} value={pageSize}>
                             Show {pageSize}
                         </option>
                     ))}
                 </select>
             </div>
-            <div>{table.getRowModel().rows.length} Rows</div>
         </div>
-    )
+    );
 }
 function Filter({
     column,
     table,
 }: {
-    column: Column<any, any>
-    table: Table<any>
+    column: Column<any, any>;
+    table: Table<any>;
 }) {
     const firstValue = table
         .getPreFilteredRowModel()
-        .flatRows[0]?.getValue(column.id)
+        .flatRows[0]?.getValue(column.id);
 
-    const columnFilterValue = column.getFilterValue()
+    const columnFilterValue = column.getFilterValue();
 
     return typeof firstValue === 'number' ? (
         <div className="flex space-x-2">
             <input
                 type="number"
                 value={(columnFilterValue as [number, number])?.[0] ?? ''}
-                onChange={e =>
+                onChange={(e) =>
                     column.setFilterValue((old: [number, number]) => [
                         e.target.value,
                         old?.[1],
@@ -340,7 +336,7 @@ function Filter({
             <input
                 type="number"
                 value={(columnFilterValue as [number, number])?.[1] ?? ''}
-                onChange={e =>
+                onChange={(e) =>
                     column.setFilterValue((old: [number, number]) => [
                         old?.[0],
                         e.target.value,
@@ -354,9 +350,9 @@ function Filter({
         <input
             type="text"
             value={(columnFilterValue ?? '') as string}
-            onChange={e => column.setFilterValue(e.target.value)}
+            onChange={(e) => column.setFilterValue(e.target.value)}
             placeholder={`Search...`}
             className="w-36 border shadow rounded"
         />
-    )
+    );
 }

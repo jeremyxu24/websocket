@@ -5,8 +5,8 @@ import { useDirectoryNavStore } from "../lib/store";
 export default function useFetchSheetData() {
     const { sheetID } = useDirectoryNavStore();
     const { data, isPending, error } = useQuery({
-        queryKey: [''],
-        queryFn: () => getSheetData(sheetID)
+        queryKey: ['sheetData'],
+        queryFn: () => getSheetData(sheetID),
     })
     return { data, isPending, error }
 }

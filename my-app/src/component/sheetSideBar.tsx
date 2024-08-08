@@ -8,6 +8,7 @@ import useAddSheet from "../hooks/useAddSheet";
 import { ColumnType } from "../type/columnType";
 import { columnColor } from "../utils/colors";
 import useAddColumn from "../hooks/useAddColumn";
+import Tooltip from "./tooltip";
 
 export default function SheetSideBar({ columnData }) {
     const [newLabel, setNewLabel] = useState('');
@@ -16,7 +17,10 @@ export default function SheetSideBar({ columnData }) {
 
     const newDirectoryMutation = useAddSubDirectory();
     const newSheetMutation = useAddSheet();
-    const newColumnMutation = useAddColumn();
+    // const newColumnMutation = useAddColumn();
+    const { newColumnMutateIsError, newColumnMutate, tooltipVisible, newColumnMutateIsSuccess, newColumnMutateIsPending, newColumnMutateError } = useAddColumn();
+
+    console.log('tooltipVisible', tooltipVisible)
 
     const handleAddNewSheet = () => {
         if (newLabel.trim() === '') {
@@ -50,8 +54,6 @@ export default function SheetSideBar({ columnData }) {
 
         newDirectoryMutation.mutate(newDirectory)
 
-        // Clear input fields after adding
-        // refetchDirectoryHandle()
         setNewLabel('');
     };
 
@@ -66,8 +68,7 @@ export default function SheetSideBar({ columnData }) {
             columnLabel: e.currentTarget.columnName.value.trim(),
             datatype: e.currentTarget.columnSelect.value
         }
-        // console.log(newColumn)
-        newColumnMutation.mutate(newColumn)
+        newColumnMutate(newColumn)
         e.currentTarget.reset()
     }
 
@@ -119,15 +120,16 @@ export default function SheetSideBar({ columnData }) {
                                     <option>Datetime</option>
                                 </select>
                                 <div className="add-sheet-button-container">
-                                    {newColumnMutation.isPending ? (
+                                    {newColumnMutateIsPending ? (
                                         'Adding column...'
                                     ) : (
                                         <>
-                                            {newColumnMutation.isError ? (
-                                                <div>An error occurred: {newColumnMutation.error.message}</div>
+                                            {newColumnMutateIsError ? (
+                                                <div>Error: {newColumnMutateError?.message}</div>
                                             ) : null}
 
-                                            {newColumnMutation.isSuccess ? <div>Column added!</div> : null}
+                                            {/* {newColumnMutation.isSuccess ? <div>Column added!</div> : null} */}
+                                            <Tooltip message={'Column added successfully'} visible={tooltipVisible} />
                                             <button className="add-sheet-button" type="submit" >
                                                 + New Column
                                             </button>

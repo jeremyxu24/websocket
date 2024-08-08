@@ -6,6 +6,7 @@ const connection = mysql.createConnection({
     user: 'root',
     password: 'root',
     database: 'spreadsheet',
+    multipleStatements: true
 });
 
 connection.connect((err) => {

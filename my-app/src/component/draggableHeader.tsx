@@ -3,17 +3,18 @@ import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
 import { Header, flexRender } from "@tanstack/react-table";
 
-type Person = {
-    firstName: string
-    lastName: string
-    age: number
-    visits: number
-    progress: number
-    status: 'relationship' | 'complicated' | 'single'
-    subRows?: Person[]
-}
+// type Person = {
+//     firstName: string
+//     lastName: string
+//     age: number
+//     visits: number
+//     progress: number
+//     status: 'relationship' | 'complicated' | 'single'
+//     subRows?: Person[]
+// }
 
-const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Header<Person, unknown>, table: any, columnResizeMode: any }) => {
+// const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Header<Person, unknown>, table: any, columnResizeMode: any }) => {
+const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Header<any, unknown>, table: any, columnResizeMode: any }) => {
     const { attributes, isDragging, listeners, setNodeRef, transform } =
         useSortable({
             id: header.column.id,

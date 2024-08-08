@@ -1,7 +1,6 @@
 // API for fetching sheet data (col/sheet relationship, rowid, response)
 
 export async function getSheetData(sheetID) {
-    console.log('sheetID', sheetID)
     if (!sheetID) {
         throw new Error('No sheetID found')
     }

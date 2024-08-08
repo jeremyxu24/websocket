@@ -3,17 +3,18 @@ import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
 import { Cell, flexRender } from "@tanstack/react-table";
 
-type Person = {
-    firstName: string
-    lastName: string
-    age: number
-    visits: number
-    progress: number
-    status: 'relationship' | 'complicated' | 'single'
-    subRows?: Person[]
-}
+// type Person = {
+//     firstName: string
+//     lastName: string
+//     age: number
+//     visits: number
+//     progress: number
+//     status: 'relationship' | 'complicated' | 'single'
+//     subRows?: Person[]
+// }
 
-const DragAlongCell = ({ cell }: { cell: Cell<Person, unknown> }) => {
+// const DragAlongCell = ({ cell }: { cell: Cell<Person, unknown> }) => {
+const DragAlongCell = ({ cell }: { cell: any }) => {
     const { isDragging, setNodeRef, transform } = useSortable({
         id: cell.column.id,
     })

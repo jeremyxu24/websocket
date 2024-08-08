@@ -5,16 +5,17 @@ export default function ColumnFilter({
     column,
     table,
 }: {
-    column: Column<any, any>
+    column: any
     table: Table<any>
 }) {
-    const firstValue = table
-        .getPreFilteredRowModel()
-        .flatRows[0]?.getValue(column.id)
+    // const firstValue = table
+    //     .getPreFilteredRowModel()
+    //     .flatRows[0]?.getValue(header.column.id)
 
     const columnFilterValue = column.getFilterValue()
 
-    return typeof firstValue === 'number' ? (
+    // return typeof firstValue === 'number' ? (
+    return column.columnDef.datatype === 'Number' ? (
         <div className="flex space-x-2">
             <input
                 type="number"

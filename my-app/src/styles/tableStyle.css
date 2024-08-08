@@ -131,9 +131,3 @@ th.add-column:hover {
     cursor: pointer;
     position: relative;
 }
-
-.add-column-popper {
-    position: absolute;
-    width: 100px;
-    height: 200px;
-}
