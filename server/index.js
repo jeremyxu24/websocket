@@ -41,7 +41,7 @@ app.get('/api/sheet/get/:sheetID', (req, res, next) => {
             return uniqueResult;
         }
         // Specify the columns to extract
-        const columnsToExtract = ['columnID', 'columnLabel', 'datatype', 'colSheetID'];
+        const columnsToExtract = ['columnID', 'columnLabel', 'datatype', 'colSheetID', 'positionIndex'];
         const columnData = extractUniqueKeyValuePairs(results, columnsToExtract);
 
         // extract response data
@@ -56,7 +56,6 @@ app.get('/api/sheet/get/:sheetID', (req, res, next) => {
                     responseData[j].responseData.push({ columnID: row.columnID, columnLabel: row.columnLabel, rowNumber: row.rowNumber, value: row.value, responseID: row.responseID })
                 }
             })
-            console.log('resData', responseData[j].responseData)
         }
         const formattedResData = { sheetID: results[0].sheetID, sheetLabel: results[0].sheetLabel, sheetURL: results[0].sheetURL, columnData: columnData, responses: responseData }
         res.status(200).json(formattedResData)
@@ -182,8 +181,6 @@ app.post('/api/sheet/create/newColumnToSheet', (req, res, next) => {
 
 app.post('/api/sheet/create/newRowToSheet', (req, res, next) => {
     const { sheetID, rowNumber } = req.body;
-    console.log('sheetID', sheetID)
-    console.log('rowNumber', rowNumber)
     // check if column exist in this sheet to prevent duplicate
     const checkingQuery = `SELECT rowID FROM spreadsheet.row 
     WHERE sheetID = ?
@@ -210,6 +207,79 @@ app.post('/api/sheet/create/newRowToSheet', (req, res, next) => {
             }
             res.status(201).json(results)
         })
+    })
+})
+
+app.post('/api/sheet/create/newResponseToSheet', (req, res, next) => {
+    const { value, responseID, rowID, colSheetID } = req.body;
+    let query;
+    let params;
+    let successMessage;
+    let statusCode;
+    if (!responseID) {
+        const checkingQuery = `SELECT responseID FROM spreadsheet.response
+        WHERE rowID = ?
+        AND colSheetID = ?`
+        const checkingParams = [rowID, colSheetID]
+        mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
+            if (err) {
+                console.log(err)
+                return res.status(500).json({ message: 'Bad connection' })
+            }
+            if (results.length > 0) {
+                query = `UPDATE spreadsheet.response
+                SET value = ?
+                WHERE responseID = ?`
+                params = [value, responseID]
+                successMessage = 'Successfully update response'
+                statusCode = 204
+            } else {
+                query = `INSERT INTO spreadsheet.response (rowID, value, colSheetID)
+                VALUES (?, ?, ?)`
+                params = [rowID, value, colSheetID]
+                successMessage = 'Successfully insert new response'
+                statusCode = 201
+            }
+            mySQLConnection.query(query, params, (err, results) => {
+                if (err) {
+                    console.log(err)
+                    return res.status(500).json({ message: 'Bad connection' })
+                }
+                res.status(statusCode).json({ message: successMessage })
+            })
+        })
+    } else {
+        query = `UPDATE spreadsheet.response
+        SET value = ?
+        WHERE responseID = ?`
+        params = [value, responseID]
+        successMessage = 'Successfully update response'
+        statusCode = 204
+    }
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(statusCode).json({ message: successMessage })
+    })
+})
+
+app.patch('/api/sheet/patch/newColPosToSheet', (req, res, next) => {
+    const newColPos = req.body;
+    let query = '';
+    const params = [];
+    newColPos.forEach((position) => {
+        query += 'UPDATE spreadsheet.colSheetRel SET positionIndex = ? WHERE colSheetID = ?; '
+        params.push(position.positionIndex, position.colSheetID)
+    })
+    console.log('params', params)
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(200).json({ message: 'Recieved' })
     })
 })
 

@@ -12,12 +12,15 @@ import DragAlongCell from './dragAlongCell';
 import AddColumnPopper from "./addColumnPopper";
 import useAddRowToSheet from "../hooks/useAddRowToSheet";
 import Tooltip from "./tooltip";
+import useAddResponse from "../hooks/useAddResponse";
+import usePatchColumnPosition from "../hooks/usePatchColumnPosition";
 
 type columnType = {
     columnID: number,
     columnLabel: string,
     datatype: string,
-    colSheetID?: number
+    colSheetID?: number,
+    positionIndex?: number
 }
 
 type columnDefType = {
@@ -27,6 +30,8 @@ type columnDefType = {
     datatype: string;
     columnID: number;
     colSheetID: number;
+    positionIndex?: number;
+    columnLabel?: string;
 }
 
 declare module '@tanstack/react-table' {
@@ -54,8 +59,19 @@ function useSkipper() {
 export default function DataTable({ columnData }) {
     const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData();
     const { newRowMutateIsError, newRowMutate, tooltipRowVisible, newRowMutateIsSuccess, newRowMutateIsPending, newrowMutateError } = useAddRowToSheet();
+    const { newResponseMutateIsError, newResponseMutate, tooltipResponseVisible, newResponseMutateIsSuccess, newResponseMutateIsPending, newResponseMutateError } = useAddResponse();
+    const { patchColPosMutateIsError, patchColPosMutate, colPosTooltipVisible, patchColPosMutateIsSuccess, patchColPosMutateIsPending, patchColPosMutateError } = usePatchColumnPosition();
 
     const [rowColResID, setRowColResID] = useState<{ [key: string]: number | null } | {}>({})
+    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+    const [columnResizeMode] = useState<ColumnResizeMode>('onChange')
+    const [columnResizeDirection] = useState<ColumnResizeDirection>('ltr')
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+    const [columns, setColumns] = useState<ColumnDef<columnDefType>[]>([])
+    const [data, setData] = React.useState<any>([])
+    const [columnOrder, setColumnOrder] = useState<string[]>([])
+    const [columnPosition, setColumnPosition] = useState<{ positionIndex: number, id: string, colSheetID: number }[] | []>([])
+    const [popperDisplayState, setPopperDisplayState] = useState<boolean>(false)
 
     // Give our default column cell renderer editing superpowers!
     const defaultColumn: Partial<ColumnDef<columnDefType>> = {
@@ -70,8 +86,9 @@ export default function DataTable({ columnData }) {
                 const { rowID } = original;
                 const { colSheetID } = columnDef
                 const selectedColSheetRowID = `colSheet-${colSheetID}-row-${rowID}`
-                console.log('selectedColSheetRowID', selectedColSheetRowID)
-                console.log('selectedColSheetRowID-Value', rowColResID[selectedColSheetRowID])
+                if (initialValue !== value) {
+                    newResponseMutate({ value, responseID: rowColResID[selectedColSheetRowID], rowID, colSheetID })
+                }
             }
 
             // If the initialValue is changed external, sync it up with our state
@@ -89,18 +106,56 @@ export default function DataTable({ columnData }) {
         },
     }
 
-    const [columns, setColumns] = useState<ColumnDef<columnDefType>[]>([])
-    const [data, setData] = React.useState<any>([])
+    useEffect(() => {
+        if (columnOrder.length < 1) {
+            return
+        }
+
+        // Function to track new order and filter unchanged positions
+        function trackChangedPositions(newNameArray: string[], previousPositions: { id: string, positionIndex: number, colSheetID: number }[]) {
+            // Create a map of name to old position for quick lookup
+            const oldPositionMap = new Map(previousPositions.map(item => [item.id, item.positionIndex]));
+
+            // Generate a new array with updated positions based on the new order
+            const updatedPositions = newNameArray.map((id, index) => {
+                const indexOfMatchedCol = previousPositions.map((col) => col.id).indexOf(id)
+                return {
+                    id,
+                    positionIndex: index + 1,
+                    colSheetID: previousPositions[indexOfMatchedCol].colSheetID
+                }
+            });
+
+            // Filter out positions where the position hasn't changed
+            const changedPositions = updatedPositions.filter(({ id, positionIndex }) => {
+                const oldPosition = oldPositionMap.get(id);
+                return oldPosition !== undefined && oldPosition !== positionIndex;
+            });
+
+            return { changedPositions, updatedPositions };
+        }
+        const { changedPositions, updatedPositions } = trackChangedPositions(columnOrder, columnPosition)
+        console.log('changedPositions', changedPositions)
+        if (changedPositions.length < 1) return
+        patchColPosMutate(changedPositions)
+        setColumnPosition(updatedPositions)
+    }, [columnOrder])
 
     useEffect(() => {
+        // set up column/columnOrder/columnPosition states
         if (!sheetData) setColumns([])
         else if (sheetData.columnData.length === 0) setColumns([])
         else {
             const formatedColumns = sheetData.columnData.reduce((acc: columnDefType[], column: columnType) => {
-                return ([...acc, { accessorKey: `${column.columnLabel.trim().replace(' ', '_')}`, id: `${column.columnLabel.trim().replace(' ', '_')}`, header: column.columnLabel, datatype: column.datatype, columnID: column.columnID, colSheetID: column.colSheetID }])
+                return ([...acc, { accessorKey: `${column.columnLabel.trim().replace(' ', '_')}`, id: `${column.columnLabel.trim().replace(' ', '_')}`, header: column.columnLabel, datatype: column.datatype, columnID: column.columnID, colSheetID: column.colSheetID, positionIndex: column.positionIndex }])
             }, [])
             setColumns(formatedColumns)
+            setColumnOrder(formatedColumns.map((c: columnDefType) => c.id!))
+            setColumnPosition(formatedColumns.map((c: columnDefType) =>
+                ({ positionIndex: c.positionIndex, id: c.id!, colSheetID: c.colSheetID })
+            ))
         }
+        // set data and rowColResID states
         if (!sheetData) {
             setData([])
             setRowColResID({})
@@ -129,22 +184,13 @@ export default function DataTable({ columnData }) {
                     const colSheetID = sheetData.columnData[i].colSheetID;
                     // rowID value
                     const rowIDValue = sheetData.responses[j].rowID;
-                    const newValue = [`colSheet-${colSheetID}-row-${rowIDValue}`, sheetData.responses[j].responseData[i].responseID]
+                    const newValue = [`colSheet - ${colSheetID} - row - ${rowIDValue}`, sheetData.responses[j].responseData[i].responseID]
                     transformedObjectResID[newValue[0]] = newValue[1]
                 }
             }
-
             setRowColResID(transformedObjectResID)
         }
     }, [sheetData])
-
-    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
-    const [columnResizeMode] = useState<ColumnResizeMode>('onChange')
-    const [columnResizeDirection] = useState<ColumnResizeDirection>('ltr')
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-
-    const [columnOrder, setColumnOrder] = React.useState<string[]>(() => columns.map(c => c.id!))
-    const [popperDisplayState, setPopperDisplayState] = useState<boolean>(false)
 
     const table = useReactTable({
         data,
@@ -245,12 +291,12 @@ export default function DataTable({ columnData }) {
                                 </tr>
                             ))}
                             {table.getHeaderGroups().map(headerGroup => (
-                                <tr key={`filter-${headerGroup.id}`}>
+                                <tr key={`filter - ${headerGroup.id}`}>
                                     <th>#</th>
                                     {headerGroup.headers.map((header, index) => {
                                         return (
                                             // header.column.getCanFilter() ? (
-                                            <th key={`filter-${index}`}>
+                                            <th key={`filter - ${index}`}>
                                                 <ColumnFilter column={header.column}
                                                     table={table} />
                                             </th>
