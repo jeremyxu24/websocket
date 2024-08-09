@@ -255,14 +255,14 @@ app.post('/api/sheet/create/newResponseToSheet', (req, res, next) => {
         params = [value, responseID]
         successMessage = 'Successfully update response'
         statusCode = 204
+        mySQLConnection.query(query, params, (err, results) => {
+            if (err) {
+                console.log(err)
+                return res.status(500).json({ message: 'Bad connection' })
+            }
+            res.status(statusCode).json({ message: successMessage })
+        })
     }
-    mySQLConnection.query(query, params, (err, results) => {
-        if (err) {
-            console.log(err)
-            return res.status(500).json({ message: 'Bad connection' })
-        }
-        res.status(statusCode).json({ message: successMessage })
-    })
 })
 
 app.patch('/api/sheet/patch/newColPosToSheet', (req, res, next) => {

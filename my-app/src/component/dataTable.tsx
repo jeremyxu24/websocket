@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, } from "react";
+import React, { useEffect, useState, } from "react";
 import '../styles/style.css';
 import '../styles/tableStyle.css'
 import { ColumnDef, getCoreRowModel, useReactTable, ColumnResizeMode, ColumnResizeDirection, RowData, getFilteredRowModel, getPaginationRowModel, ColumnFiltersState, getSortedRowModel, } from '@tanstack/react-table'
@@ -135,7 +135,6 @@ export default function DataTable({ columnData }) {
             return { changedPositions, updatedPositions };
         }
         const { changedPositions, updatedPositions } = trackChangedPositions(columnOrder, columnPosition)
-        console.log('changedPositions', changedPositions)
         if (changedPositions.length < 1) return
         patchColPosMutate(changedPositions)
         setColumnPosition(updatedPositions)
@@ -184,7 +183,7 @@ export default function DataTable({ columnData }) {
                     const colSheetID = sheetData.columnData[i].colSheetID;
                     // rowID value
                     const rowIDValue = sheetData.responses[j].rowID;
-                    const newValue = [`colSheet - ${colSheetID} - row - ${rowIDValue}`, sheetData.responses[j].responseData[i].responseID]
+                    const newValue = [`colSheet-${colSheetID}-row-${rowIDValue}`, sheetData.responses[j].responseData[i].responseID]
                     transformedObjectResID[newValue[0]] = newValue[1]
                 }
             }
