@@ -2,11 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { postNewRow } from "../api/postNewRowToSheetAPI";
 import { useState } from "react";
 import { queryClient } from "../lib/queryClient";
-import { useDirectoryNavStore } from "../lib/store";
+// import { useDirectoryNavStore } from "../lib/store";
 
-export default function useAddRowToSheet() {
+export default function useAddRowToSheet(sheetID: number) {
     const [tooltipRowVisible, setToolRowtipVisible] = useState(false);
-    const { sheetID } = useDirectoryNavStore();
+    // const { sheetID } = useDirectoryNavStore();
 
     const { mutate: newRowMutate, isSuccess: newRowMutateIsSuccess, isError: newRowMutateIsError, isPending: newRowMutateIsPending, error: newrowMutateError } = useMutation({
         mutationFn: (newRow: { rowNumber: number }) => postNewRow({ ...newRow, sheetID })

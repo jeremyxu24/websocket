@@ -4,7 +4,6 @@ import '../styles/style.css'
 import '../styles/popup.css'
 import { ColumnType } from "../type/columnType";
 import useAddColumToSheet from "../hooks/useAddColumnToSheet";
-import { useDirectoryNavStore } from "../lib/store";
 
 type columnDefType = {
     accessorKey: string,
@@ -14,18 +13,18 @@ type columnDefType = {
     columnID: number
 }
 
-export default function AddColumnPopper({ columns, existColumns, popperDisplayState, setPopperDisplayState, maxExistColumns }:
-    { columns: ColumnType[], existColumns: any, popperDisplayState: boolean, setPopperDisplayState: (value: boolean) => void, maxExistColumns: number }) {
+export default function AddColumnPopper(
+    { columns, existColumns, popperDisplayState, setPopperDisplayState, maxExistColumns, sheetID }:
+        { columns: ColumnType[], existColumns: any, popperDisplayState: boolean, setPopperDisplayState: (value: boolean) => void, maxExistColumns: number, sheetID: number }) {
 
     const [selectedColumnID, setSelectedColumnID] = useState<number>(0)
     const popupContentRef = useRef<HTMLDivElement>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(1)
     const addColumnToSheetMutation = useAddColumToSheet();
-    const { sheetID } = useDirectoryNavStore();
 
     const existColumnsID = existColumns.map((column: columnDefType) => column.columnID)
 
-    const filteredSelectableColumns = columns.filter((column) => {
+    const filteredSelectableColumns = columns?.filter((column) => {
         return !existColumnsID.includes(column.columnID)
     })
 

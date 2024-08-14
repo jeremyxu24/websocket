@@ -5,7 +5,7 @@ import { ColumnDef, getCoreRowModel, useReactTable, ColumnResizeMode, ColumnResi
 import { DndContext, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, type DragEndEvent, useSensor, useSensors, } from '@dnd-kit/core'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import { arrayMove, SortableContext, horizontalListSortingStrategy, } from '@dnd-kit/sortable'
-import useFetchSheetData from '../hooks/useFetchSheetData';
+import { useFetchSheetData } from '../hooks/useFetchSheetData';
 import ColumnFilter from './columnFilter';
 import DraggableTableHeader from './draggableHeader';
 import DragAlongCell from './dragAlongCell';
@@ -56,9 +56,9 @@ function useSkipper() {
     return [shouldSkip, skip] as const
 }
 
-export default function DataTable({ columnData }) {
-    const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData();
-    const { newRowMutateIsError, newRowMutate, tooltipRowVisible, newRowMutateIsSuccess, newRowMutateIsPending, newrowMutateError } = useAddRowToSheet();
+export default function DataTable({ columnData, sheetID }) {
+    const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData(sheetID);
+    const { newRowMutateIsError, newRowMutate, tooltipRowVisible, newRowMutateIsSuccess, newRowMutateIsPending, newrowMutateError } = useAddRowToSheet(sheetID);
     const { newResponseMutateIsError, newResponseMutate, tooltipResponseVisible, newResponseMutateIsSuccess, newResponseMutateIsPending, newResponseMutateError } = useAddResponse();
     const { patchColPosMutateIsError, patchColPosMutate, colPosTooltipVisible, patchColPosMutateIsSuccess, patchColPosMutateIsPending, patchColPosMutateError } = usePatchColumnPosition();
 
@@ -143,9 +143,9 @@ export default function DataTable({ columnData }) {
     useEffect(() => {
         // set up column/columnOrder/columnPosition states
         if (!sheetData) setColumns([])
-        else if (sheetData.columnData.length === 0) setColumns([])
+        else if (sheetData.columnData.length === 0 || !sheetData.columnData[0].columnID || !sheetData.columnData[0].columnLabel) setColumns([])
         else {
-            const formatedColumns = sheetData.columnData.reduce((acc: columnDefType[], column: columnType) => {
+            const formatedColumns = sheetData?.columnData.reduce((acc: columnDefType[], column: columnType) => {
                 return ([...acc, { accessorKey: `${column.columnLabel.trim().replace(' ', '_')}`, id: `${column.columnLabel.trim().replace(' ', '_')}`, header: column.columnLabel, datatype: column.datatype, columnID: column.columnID, colSheetID: column.colSheetID, positionIndex: column.positionIndex }])
             }, [])
             setColumns(formatedColumns)
@@ -256,11 +256,9 @@ export default function DataTable({ columnData }) {
         newRowMutate(newRow)
     }
 
-    if (isPending) return 'Loading...'
-
-    if (fetchSheetDataError) return 'An error has occurred: ' + fetchSheetDataError.message
-
-    return (
+    if (isPending) return 'Loading sheet...'
+    else if (fetchSheetDataError) return 'An error has occurred: ' + fetchSheetDataError.message
+    else return (
         // NOTE: This provider creates div elements, so don't nest inside of <table> elements
         <>
             <DndContext
@@ -394,7 +392,7 @@ export default function DataTable({ columnData }) {
                 </select>
             </div>
             <div>{table.getRowModel().rows.length} Rows</div>
-            <AddColumnPopper columns={columnData} existColumns={columns} popperDisplayState={popperDisplayState} setPopperDisplayState={setPopperDisplayState} maxExistColumns={columns.length} />
+            <AddColumnPopper columns={columnData} existColumns={columns} popperDisplayState={popperDisplayState} setPopperDisplayState={setPopperDisplayState} maxExistColumns={columns.length} sheetID={sheetID} />
         </>
     )
 }

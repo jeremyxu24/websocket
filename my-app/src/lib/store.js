@@ -47,28 +47,3 @@ export const useDirectoryNavStore = create((set) => ({
     setSheetID: (value) => set({ sheetID: value }),
     resetSheetID: () => set({ sheetID: null })
 }))
-
-// category sheet table
-// categoryID
-
-// user table
-
-// permission table
-
-
-// initial -> sheetID
-
-// sheet
-// sheetID, label, url, categoryID
-// sheetID => columnID & relationshipID
-
-
-// relationship table:
-// relationshipID, columnID, sheetID, colPosition
-
-// response table:
-// responseID, value, relationshipID, rowID
-
-
-// table 1 => sorting, add row/column, editable cell, resizing, moving column
-// table 1 need adjusing data type selection

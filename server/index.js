@@ -26,6 +26,10 @@ app.get('/api/sheet/get/:sheetID', (req, res, next) => {
             res.status(500).json({ message: 'Bad connection' })
             return
         }
+        if (results.length === 0) {
+            res.status(404).json({ message: 'Sheet not found' })
+            return
+        }
         const rowIDs = results.map((row) => row.rowID)
         const uniqueRowIDs = [... new Set(rowIDs)]
         // extract column data
@@ -127,11 +131,15 @@ app.post('/api/directory/create/newSheet', (req, res, next) => {
 app.get('/api/directory/get/:parentID', (req, res, next) => {
     const { parentID } = req.params;
     const query = `
-        select d.directoryID, d.directoryLabel, d.directoryURL, d.directoryType, d.parentID, s.sheetID, s.sheetLabel, s.sheetURL
-        from spreadsheet.directory as d
-        left join spreadsheet.sheet as s on d.directoryID = s.directoryID
-        where d.parentID = ? OR
-        s.directoryID = ?`
+        SELECT d.*, s.sheetID, s.sheetLabel, s.sheetURL
+        FROM spreadsheet.directory AS d
+        LEFT JOIN spreadsheet.sheet AS s ON d.directoryID = s.directoryID
+        WHERE (s.directoryID = ?)
+        AND sheetID IS NOT NULL
+        UNION
+        SELECT *, NULL AS sheetID, NULL AS sheetLabel, NULL AS sheetURL
+        FROM spreadsheet.directory AS d
+        WHERE d.parentID = ?`
     const params = [parentID, parentID];
     mySQLConnection.query(query, params, (err, results) => {
         if (err) {
@@ -273,13 +281,67 @@ app.patch('/api/sheet/patch/newColPosToSheet', (req, res, next) => {
         query += 'UPDATE spreadsheet.colSheetRel SET positionIndex = ? WHERE colSheetID = ?; '
         params.push(position.positionIndex, position.colSheetID)
     })
-    console.log('params', params)
     mySQLConnection.query(query, params, (err, results) => {
         if (err) {
             console.log(err)
             return res.status(500).json({ message: 'Bad connection' })
         }
         res.status(200).json({ message: 'Recieved' })
+    })
+})
+
+app.get('/api/navigation/get/directory/:directoryID', (req, res, next) => {
+    const { directoryID } = req.params;
+    const query = `
+    WITH RECURSIVE temp AS (
+    SELECT *
+    FROM directory d
+    WHERE directoryid = ?
+    UNION ALL
+    SELECT d.*
+    FROM directory d
+    INNER JOIN temp t ON t.parentId = d.directoryID
+    )
+    SELECT *
+    FROM temp
+    ORDER BY directoryID ASC;`
+    const params = [directoryID]
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(200).json(results)
+    })
+})
+
+app.get('/api/navigation/get/sheet/:sheetID', (req, res, next) => {
+    const { sheetID } = req.params;
+    const query = `
+    WITH RECURSIVE temp AS (
+    SELECT *
+        FROM directory d
+        WHERE directoryid = (SELECT directoryID FROM spreadsheet.sheet WHERE sheetID = ?)
+        UNION ALL
+        SELECT d.*
+        FROM directory d
+        INNER JOIN temp t ON t.parentId = d.directoryID
+    )
+    SELECT t.*, NULL AS sheetID, NULL AS sheetLabel, NULL AS sheetURL
+    FROM temp t
+    UNION
+    SELECT d.*, s.sheetID, s.sheetLabel, s.sheetURL
+    FROM spreadsheet.directory AS d
+    LEFT JOIN spreadsheet.sheet AS s ON d.directoryID = s.directoryID
+    WHERE s.sheetID = ?
+    ORDER BY parentID ASC, sheetID ASC;`
+    const params = [sheetID, sheetID]
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(200).json(results)
     })
 })
 

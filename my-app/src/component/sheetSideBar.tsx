@@ -1,26 +1,21 @@
 import React, { useState } from "react";
 import '../styles/style.css'; // Import the CSS file
-import DocumentIcon from "../assets/img/Document";
 import { newDirectoryType, newSheetType } from "../type/directoryType";
 import useAddSubDirectory from "../hooks/useAddSubDirectory";
-import { useDirectoryNavStore, useDirectoryTypeStore } from "../lib/store";
 import useAddSheet from "../hooks/useAddSheet";
 import { ColumnType } from "../type/columnType";
 import { columnColor } from "../utils/colors";
 import useAddColumn from "../hooks/useAddColumn";
 import Tooltip from "./tooltip";
 
-export default function SheetSideBar({ columnData }) {
+export default function SheetSideBar({ columnData, type, navLoc, navPending, navError, columnPending, columnError }) {
     const [newLabel, setNewLabel] = useState('');
-    const { location } = useDirectoryNavStore();
-    const { type } = useDirectoryTypeStore();
 
     const newDirectoryMutation = useAddSubDirectory();
     const newSheetMutation = useAddSheet();
-    // const newColumnMutation = useAddColumn();
     const { newColumnMutateIsError, newColumnMutate, tooltipVisible, newColumnMutateIsSuccess, newColumnMutateIsPending, newColumnMutateError } = useAddColumn();
 
-    console.log('tooltipVisible', tooltipVisible)
+    // console.log('tooltipVisible', tooltipVisible)
 
     const handleAddNewSheet = () => {
         if (newLabel.trim() === '') {
@@ -29,7 +24,7 @@ export default function SheetSideBar({ columnData }) {
         }
 
         const newSheet: newSheetType = {
-            directoryID: location[location.length - 1].directoryID,
+            directoryID: navLoc[navLoc.length - 1].directoryID,
             sheetLabel: newLabel.trim(),
             sheetURL: newLabel.trim().replace(' ', '_')
         };
@@ -49,7 +44,7 @@ export default function SheetSideBar({ columnData }) {
             directoryLabel: newLabel.trim(),
             directoryType: 'directory',
             directoryURL: newLabel.trim().replace(' ', '_'),
-            parentID: location[location.length - 1].directoryID
+            parentID: navLoc[navLoc.length - 1].directoryID
         };
 
         newDirectoryMutation.mutate(newDirectory)
@@ -72,7 +67,25 @@ export default function SheetSideBar({ columnData }) {
         e.currentTarget.reset()
     }
 
-    return (
+    if (navPending || columnPending) return <>Loading...</>
+    else if (navError || columnError) return <>An error has occurred. {navError ? navError.message : columnError.message}</>
+    else if (!navLoc || navLoc.length === 0) {
+        return (
+            <div className="sidebar-container">
+                <div className="sidebar-content">
+                    <div className="sidebar-header">
+                        <div className="brand-name">AMERICOR</div>
+                    </div>
+                    <hr className="divider" />
+                    <div style={{ padding: '20px' }}>
+                        <h3>Error...</h3>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    else return (
         <div className="sidebar-container">
             <div className="sidebar-content">
                 <div className="sidebar-header">
