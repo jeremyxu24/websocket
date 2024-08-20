@@ -1,9 +1,9 @@
 import React from 'react';
 import '../styles/style.css'
 
-const Tooltip = ({ message, visible }) => {
+const Tooltip = ({ message, visible, className = '' }) => {
     return (
-        <div className={`tooltip ${visible ? 'visible' : 'hidden'}`}>
+        <div className={`tooltip ${visible ? 'visible' : 'hidden'} ${className}`}>
             {message}
         </div>
     );

@@ -7,23 +7,30 @@ import { postNewColumn } from '../api/postNewColumnAPI.js'
 import { useState } from 'react'
 
 export default function useAddColumn() {
-    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const [addColTooltipVisible, setAddColTooltipVisible] = useState(false);
+    const [addColTooltipMessage, setAddColTooltipMessage] = useState<string>('')
 
     const { mutate: newColumnMutate, isSuccess: newColumnMutateIsSuccess, isError: newColumnMutateIsError, isPending: newColumnMutateIsPending, error: newColumnMutateError } = useMutation({
         mutationFn: (newColumn: ColumnType) => postNewColumn(newColumn)
         , onSuccess: () => {
-            // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['columns'] })
-            // tooltip logic
-            setTooltipVisible(true)
+            setAddColTooltipVisible(true)
+            setAddColTooltipMessage('Successfully Added.')
             setTimeout(() => {
-                setTooltipVisible(false)
+                setAddColTooltipVisible(false)
+                setAddColTooltipMessage('')
+            }, 3000)
+        },
+        onError: () => {
+            setAddColTooltipVisible(true)
+            setAddColTooltipMessage('Error has occured.')
+            setTimeout(() => {
+                setAddColTooltipVisible(false)
+                setAddColTooltipMessage('')
             }, 3000)
         }
-        // , onError: () => {
 
-        // }
     })
 
-    return { newColumnMutateIsError, newColumnMutate, tooltipVisible, newColumnMutateIsSuccess, newColumnMutateIsPending, newColumnMutateError }
+    return { newColumnMutateIsError, newColumnMutate, addColTooltipVisible, newColumnMutateIsSuccess, newColumnMutateIsPending, newColumnMutateError, addColTooltipMessage }
 }

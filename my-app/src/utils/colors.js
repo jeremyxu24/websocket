@@ -16,9 +16,10 @@ export function grey(value) {
 }
 
 export const columnColor = {
-    String: '#CCD5AE',
-    Number: '#E9EDC9',
-    Array: "#FEFAE0",
-    Date: "#FAEDCD",
-    Datetime: "#D4A373",
+    String: '#fcf3c4',
+    Number: '#fcdbbe',
+    Array: "#fbc3b8",
+    Date: "#fbabb2",
+    Datetime: "#fa92ac",
+    Boolean: "#fa7aa6"
 }

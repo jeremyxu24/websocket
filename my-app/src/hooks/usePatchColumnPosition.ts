@@ -4,7 +4,8 @@ import { useState } from "react";
 import { patchColPosToSheet } from "../api/patchColPosToSheetAPI";
 
 export default function usePatchColumnPosition() {
-    const [colPosTooltipVisible, setColPosTooltipVisible] = useState(false);
+    const [colPosTooltipVisible, setColPosTooltipVisible] = useState<boolean>(false);
+    const [colPosTooltipMessage, setColPosTooltipMessage] = useState<string>('');
 
     const { mutate: patchColPosMutate, isSuccess: patchColPosMutateIsSuccess, isError: patchColPosMutateIsError, isPending: patchColPosMutateIsPending, error: patchColPosMutateError } = useMutation({
         mutationFn: (newColPos: { positionIndex: number, id: string, colSheetID: number }[]) => patchColPosToSheet(newColPos)
@@ -14,14 +15,21 @@ export default function usePatchColumnPosition() {
 
             // tooltip logic
             setColPosTooltipVisible(true)
+            setColPosTooltipMessage('Column updated.')
             setTimeout(() => {
                 setColPosTooltipVisible(false)
+                setColPosTooltipMessage('')
+            }, 1500)
+        },
+        onError: () => {
+            setColPosTooltipVisible(true)
+            setColPosTooltipMessage('Error has occured.')
+            setTimeout(() => {
+                setColPosTooltipVisible(false)
+                setColPosTooltipMessage('')
             }, 3000)
         }
-        // , onError: () => {
-
-        // }
     })
 
-    return { patchColPosMutateIsError, patchColPosMutate, colPosTooltipVisible, patchColPosMutateIsSuccess, patchColPosMutateIsPending, patchColPosMutateError }
+    return { patchColPosMutateIsError, patchColPosMutate, colPosTooltipVisible, patchColPosMutateIsSuccess, patchColPosMutateIsPending, patchColPosMutateError, colPosTooltipMessage }
 }

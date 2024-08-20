@@ -345,6 +345,63 @@ app.get('/api/navigation/get/sheet/:sheetID', (req, res, next) => {
     })
 })
 
+app.delete('/api/directory/delete/type/:type/id/:id', (req, res, next) => {
+    const { type, id } = req.params;
+    console.log(type, id)
+    let query;
+    const params = parseInt(id);
+    if (type === 'directory') {
+        query = `
+        DELETE FROM spreadsheet.directory
+        WHERE directoryID = ?
+        `
+    } else if (type === 'sheet') {
+        query = `
+        DELETE FROM spreadsheet.sheet
+        WHERE sheetID = ?
+        `
+    } else {
+        res.status(405).json({ message: 'Type error' })
+        return
+    }
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(204).json({ messaged: 'Successfully deleted' })
+    })
+})
+
+app.delete('/api/sheet/delete/row/:rowID', (req, res, next) => {
+    const { rowID } = req.params;
+    let query = `DELETE FROM spreadsheet.row
+        WHERE rowID = ?`;
+    const params = parseInt(rowID);
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(204).json({ messaged: 'Successfully deleted' })
+    })
+})
+
+app.delete('/api/sheet/delete/column/:colSheetID', (req, res, next) => {
+    const { colSheetID } = req.params;
+    console.log('colSheetID', colSheetID)
+    let query = `DELETE FROM spreadsheet.colSheetRel
+        WHERE colSheetID = ?`;
+    const params = parseInt(colSheetID);
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        res.status(204).json({ messaged: 'Successfully deleted' })
+    })
+})
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });

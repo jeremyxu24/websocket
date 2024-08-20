@@ -2,19 +2,24 @@ import React, { CSSProperties } from "react";
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
 import { Header, flexRender } from "@tanstack/react-table";
+import { THeaderProps } from "../type/tableType";
 
-// type Person = {
-//     firstName: string
-//     lastName: string
-//     age: number
-//     visits: number
-//     progress: number
-//     status: 'relationship' | 'complicated' | 'single'
-//     subRows?: Person[]
-// }
+const DraggableTableHeader = ({ header, table, columnResizeMode, setColPopupState }
+    : THeaderProps) => {
 
-// const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Header<Person, unknown>, table: any, columnResizeMode: any }) => {
-const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Header<any, unknown>, table: any, columnResizeMode: any }) => {
+    function handleColumnOptionPopup(event: any, header: Header<any, unknown>) {
+        const rect = event.target.getBoundingClientRect();
+        const position = {
+            top: rect.bottom + window.scrollY,  // Position just below the header
+            left: rect.left + window.scrollX,   // Align with the header's left edge
+        };
+        setColPopupState(() => ({
+            selectedColumnID: header.column.columnDef.colSheetID,
+            position: position,
+            columnOptionPopperDisplayState: true
+        }))
+    }
+
     const { attributes, isDragging, listeners, setNodeRef, transform } =
         useSortable({
             id: header.column.id,
@@ -36,7 +41,7 @@ const DraggableTableHeader = ({ header, table, columnResizeMode }: { header: Hea
                 ? null
                 :
                 <div className='d-flex' style={{ justifyContent: 'space-evenly' }}>
-                    {/* flexRender(header.column.columnDef.header, header.getContext()) */}
+                    <button onClick={(event) => handleColumnOptionPopup(event, header)}>?</button>
                     <div
                         {...{
                             className: header.column.getCanSort()

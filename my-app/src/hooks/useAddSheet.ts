@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
     useMutation,
 } from '@tanstack/react-query'
@@ -6,13 +7,29 @@ import { postNewSheet } from '../api/postSheetAPI.js'
 import { newSheetType } from '../type/directoryType.js'
 
 export default function useAddSheet() {
-    return useMutation({
+    const [addSheetTooltipVisible, setAddSheetDirTooltipVisible] = useState(false);
+    const [addSbeetTooltipMessage, setAddSheetTooltipMessage] = useState<string>('')
+
+    const { mutate: addSheetMutate } = useMutation({
         mutationFn: (newSheet: newSheetType) => postNewSheet(newSheet)
         , onSuccess: () => {
             // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['subDirectories'] })
-        }, onError: (err) => {
-            console.error('Error adding directory:', err)
+            setAddSheetDirTooltipVisible(true)
+            setAddSheetTooltipMessage('Successfully Added.')
+            setTimeout(() => {
+                setAddSheetDirTooltipVisible(false)
+                setAddSheetTooltipMessage('')
+            }, 3000)
+        },
+        onError: () => {
+            setAddSheetDirTooltipVisible(true)
+            setAddSheetTooltipMessage('Error has occured.')
+            setTimeout(() => {
+                setAddSheetDirTooltipVisible(false)
+                setAddSheetTooltipMessage('')
+            }, 3000)
         }
     })
+    return { addSheetTooltipVisible, addSbeetTooltipMessage, addSheetMutate }
 }

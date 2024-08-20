@@ -11,11 +11,9 @@ import Tooltip from "./tooltip";
 export default function SheetSideBar({ columnData, type, navLoc, navPending, navError, columnPending, columnError }) {
     const [newLabel, setNewLabel] = useState('');
 
-    const newDirectoryMutation = useAddSubDirectory();
-    const newSheetMutation = useAddSheet();
-    const { newColumnMutateIsError, newColumnMutate, tooltipVisible, newColumnMutateIsSuccess, newColumnMutateIsPending, newColumnMutateError } = useAddColumn();
-
-    // console.log('tooltipVisible', tooltipVisible)
+    const { addSubDirTooltipVisible, addSubDirTooltipMessage, addNewDirMutate } = useAddSubDirectory();
+    const { addSheetTooltipVisible, addSbeetTooltipMessage, addSheetMutate } = useAddSheet();
+    const { newColumnMutateIsError, newColumnMutate, addColTooltipVisible, newColumnMutateIsPending, newColumnMutateError, addColTooltipMessage } = useAddColumn();
 
     const handleAddNewSheet = () => {
         if (newLabel.trim() === '') {
@@ -29,7 +27,7 @@ export default function SheetSideBar({ columnData, type, navLoc, navPending, nav
             sheetURL: newLabel.trim().replace(' ', '_')
         };
 
-        newSheetMutation.mutate(newSheet)
+        addSheetMutate(newSheet)
 
         setNewLabel('');
     };
@@ -47,7 +45,7 @@ export default function SheetSideBar({ columnData, type, navLoc, navPending, nav
             parentID: navLoc[navLoc.length - 1].directoryID
         };
 
-        newDirectoryMutation.mutate(newDirectory)
+        addNewDirMutate(newDirectory)
 
         setNewLabel('');
     };
@@ -86,83 +84,94 @@ export default function SheetSideBar({ columnData, type, navLoc, navPending, nav
     }
 
     else return (
-        <div className="sidebar-container">
-            <div className="sidebar-content">
-                <div className="sidebar-header">
-                    <div className="brand-name">AMERICOR</div>
-                </div>
-                <hr className="divider" />
-
-                {type === "directory" ?
-                    <div className="sidebar-add">
-                        <input
-                            type="text"
-                            placeholder="New..."
-                            value={newLabel}
-                            onChange={(e) => setNewLabel(e.target.value)}
-                            className="new-sheet-input"
-                            style={{ width: '100%' }}
-                        />
-                        <div className="add-sheet-button-container">
-                            <button className="add-sheet-button" onClick={handleAddNewDirectory} >
-                                + New Directory
-                            </button>
-                            <button className="add-sheet-button" onClick={handleAddNewSheet} >
-                                + New Sheet
-                            </button>
-                        </div>
+        <>
+            <div className="sidebar-container">
+                <div className="sidebar-content">
+                    <div className="sidebar-header">
+                        <div className="brand-name">AMERICOR</div>
                     </div>
-                    :
-                    <>
-                        <div style={{ width: '100%', borderBottom: '1px solid white', paddingBottom: '10px', marginBottom: '10px' }}>
-                            <form onSubmit={handleAddNewColumn}>
-                                <label>Column name:</label>
-                                <input
-                                    type="text"
-                                    placeholder="New column..."
-                                    name="columnName"
-                                    className="new-sheet-input"
-                                    style={{ width: '100%' }}
-                                />
-                                <label>Data type:</label>
-                                <select name="columnSelect" style={{ width: '100%', height: '35px', padding: '5px', borderRadius: '5px' }}>
-                                    <option>String</option>
-                                    <option>Number</option>
-                                    <option>Array</option>
-                                    <option>Date</option>
-                                    <option>Datetime</option>
-                                </select>
-                                <div className="add-sheet-button-container">
-                                    {newColumnMutateIsPending ? (
-                                        'Adding column...'
-                                    ) : (
-                                        <>
-                                            {newColumnMutateIsError ? (
-                                                <div>Error: {newColumnMutateError?.message}</div>
-                                            ) : null}
+                    <hr className="divider" />
 
-                                            {/* {newColumnMutation.isSuccess ? <div>Column added!</div> : null} */}
-                                            <Tooltip message={'Column added successfully'} visible={tooltipVisible} />
-                                            <button className="add-sheet-button" type="submit" >
-                                                + New Column
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </form>
+                    {type === "directory" ?
+                        <div className="sidebar-add">
+                            <input
+                                type="text"
+                                placeholder="New..."
+                                value={newLabel}
+                                onChange={(e) => setNewLabel(e.target.value)}
+                                className="new-sheet-input"
+                                style={{ width: '100%' }}
+                            />
+                            <div className="add-sheet-button-container">
+                                <button className="add-sheet-button" onClick={handleAddNewDirectory} >
+                                    + New Directory
+                                </button>
+                                <button className="add-sheet-button" onClick={handleAddNewSheet} >
+                                    + New Sheet
+                                </button>
+                            </div>
                         </div>
-                        <div className="columnsContainer">
+                        :
+                        <>
+                            <div style={{ width: '100%', borderBottom: '1px solid white', paddingBottom: '10px', marginBottom: '10px' }}>
+                                <form onSubmit={handleAddNewColumn}>
+                                    <label>Column name:</label>
+                                    <input
+                                        type="text"
+                                        placeholder="New column..."
+                                        name="columnName"
+                                        className="new-sheet-input"
+                                        style={{ width: '100%' }}
+                                    />
+                                    <label>Data type:</label>
+                                    <select name="columnSelect" style={{ width: '100%', height: '35px', padding: '5px', borderRadius: '5px' }}>
+                                        <option>String</option>
+                                        <option>Number</option>
+                                        <option>Boolean</option>
+                                        <option>Date</option>
+                                        <option>Datetime</option>
+                                        {/* <option>Array</option> */}
+                                    </select>
+                                    <div className="add-sheet-button-container">
+                                        {newColumnMutateIsPending ? (
+                                            'Adding column...'
+                                        ) : (
+                                            <>
+                                                {newColumnMutateIsError ? addColTooltipVisible && (
+                                                    <div>Error: {newColumnMutateError?.message}</div>
+                                                ) : null}
+                                                {addColTooltipVisible && <div>{addColTooltipMessage}</div>}
+                                                <button className="add-sheet-button" type="submit" >
+                                                    + New Column
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
                             <div>Columns:</div>
-                            {columnData && columnData.map((column: ColumnType, index: number) => (
-                                <div className="columnCard" key={`columnCard-${index}`} style={{ backgroundColor: `${columnColor[column.datatype]}` }}>
-                                    <div style={{ fontWeight: 'bold' }}>{column.columnLabel}</div>
-                                    <div style={{ textTransform: 'uppercase', color: '#454545' }}>{column.datatype}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                }
+                            <div className="columnsContainer">
+                                {columnData && columnData.map((column: ColumnType, index: number) => (
+                                    <div className="columnCard" key={`columnCard-${index}`} style={{ backgroundColor: `${columnColor[column.datatype]}` }}>
+                                        <div style={{ fontWeight: 'bold' }}>{column.columnLabel}</div>
+                                        <div style={{ textTransform: 'uppercase', color: '#454545' }}>{column.datatype}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    }
+                </div>
             </div>
-        </div>
+            <Tooltip
+                message={addSubDirTooltipMessage}
+                visible={addSubDirTooltipVisible}
+                className="tooltipCenter"
+            />
+            <Tooltip
+                message={addSbeetTooltipMessage}
+                visible={addSheetTooltipVisible}
+                className="tooltipCenter"
+            />
+        </>
     );
 }

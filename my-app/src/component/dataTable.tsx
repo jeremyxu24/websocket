@@ -1,4 +1,4 @@
-import React, { useEffect, useState, } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import '../styles/style.css';
 import '../styles/tableStyle.css'
 import { ColumnDef, getCoreRowModel, useReactTable, ColumnResizeMode, ColumnResizeDirection, RowData, getFilteredRowModel, getPaginationRowModel, ColumnFiltersState, getSortedRowModel, } from '@tanstack/react-table'
@@ -14,25 +14,9 @@ import useAddRowToSheet from "../hooks/useAddRowToSheet";
 import Tooltip from "./tooltip";
 import useAddResponse from "../hooks/useAddResponse";
 import usePatchColumnPosition from "../hooks/usePatchColumnPosition";
-
-type columnType = {
-    columnID: number,
-    columnLabel: string,
-    datatype: string,
-    colSheetID?: number,
-    positionIndex?: number
-}
-
-type columnDefType = {
-    accessorKey: string;
-    id: string;
-    header: string;
-    datatype: string;
-    columnID: number;
-    colSheetID: number;
-    positionIndex?: number;
-    columnLabel?: string;
-}
+import RowOptionPopper from "./rowOptionPopper"
+import ColumnOptionPopper from "./columnOptionPopper";
+import { TColumn, TColumnDef, TColOptPopupState, TRowOptPopupState } from "../type/tableType";
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
@@ -58,33 +42,45 @@ function useSkipper() {
 
 export default function DataTable({ columnData, sheetID }) {
     const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData(sheetID);
-    const { newRowMutateIsError, newRowMutate, tooltipRowVisible, newRowMutateIsSuccess, newRowMutateIsPending, newrowMutateError } = useAddRowToSheet(sheetID);
-    const { newResponseMutateIsError, newResponseMutate, tooltipResponseVisible, newResponseMutateIsSuccess, newResponseMutateIsPending, newResponseMutateError } = useAddResponse();
-    const { patchColPosMutateIsError, patchColPosMutate, colPosTooltipVisible, patchColPosMutateIsSuccess, patchColPosMutateIsPending, patchColPosMutateError } = usePatchColumnPosition();
+    const { newRowMutate, tooltipAddRowVisible, newRowMutateIsPending, tooltipAddRowMessage } = useAddRowToSheet(sheetID);
+    const { newResponseMutate, tooltipResponseVisible, tooltipResponseMessage } = useAddResponse();
+    const { patchColPosMutate, colPosTooltipVisible, colPosTooltipMessage } = usePatchColumnPosition();
 
     const [rowColResID, setRowColResID] = useState<{ [key: string]: number | null } | {}>({})
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const [columnResizeMode] = useState<ColumnResizeMode>('onChange')
     const [columnResizeDirection] = useState<ColumnResizeDirection>('ltr')
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [columns, setColumns] = useState<ColumnDef<columnDefType>[]>([])
+    const [columns, setColumns] = useState<ColumnDef<TColumnDef>[]>([])
     const [data, setData] = React.useState<any>([])
     const [columnOrder, setColumnOrder] = useState<string[]>([])
     const [columnPosition, setColumnPosition] = useState<{ positionIndex: number, id: string, colSheetID: number }[] | []>([])
-    const [popperDisplayState, setPopperDisplayState] = useState<boolean>(false)
+    const [newColumnPopperDisplayState, setNewColumnPopperDisplayState] = useState<boolean>(false)
+    const [rowPopupState, setRowPopupState] = useState<TRowOptPopupState>({
+        selectedRowID: null,
+        rowOptionPopperDisplayState: false,
+        position: { top: 0, left: 0 }
+    })
+    const [colPopupState, setColPopupState] = useState<TColOptPopupState>({
+        selectedColumnID: null,
+        columnOptionPopperDisplayState: false,
+        position: { top: 0, left: 0 },
+    });
 
     // Give our default column cell renderer editing superpowers!
-    const defaultColumn: Partial<ColumnDef<columnDefType>> = {
+    const defaultColumn: Partial<ColumnDef<TColumnDef>> = {
         cell: ({ getValue, row: { index, original }, column: { id, columnDef }, table }) => {
             const initialValue = getValue()
             // We need to keep and update the state of the cell normally
             const [value, setValue] = React.useState(initialValue)
+            const { datatype } = columnDef
 
             // When the input is blurred, we'll call our table meta's updateData function
             const onBlur = () => {
                 table.options.meta?.updateData(index, id, value)
                 const { rowID } = original;
                 const { colSheetID } = columnDef
+
                 const selectedColSheetRowID = `colSheet-${colSheetID}-row-${rowID}`
                 if (initialValue !== value) {
                     newResponseMutate({ value, responseID: rowColResID[selectedColSheetRowID], rowID, colSheetID })
@@ -96,13 +92,65 @@ export default function DataTable({ columnData, sheetID }) {
                 setValue(initialValue)
             }, [initialValue])
 
-            return (
-                <input
-                    value={value as string}
-                    onChange={e => setValue(e.target.value)}
-                    onBlur={onBlur}
-                />
-            )
+            if (datatype === "Number") {
+                return (
+                    <input
+                        type="number"
+                        value={value as string}
+                        onChange={e => setValue(e.target.value)}
+                        onBlur={onBlur}
+                    />
+                )
+            }
+            else if (datatype === "String") {
+                return (
+                    <input
+                        value={value as string}
+                        onChange={e => setValue(e.target.value)}
+                        onBlur={onBlur}
+                    />
+                )
+            }
+            else if (datatype === 'Datetime') {
+                return (
+                    <input
+                        aria-label="Date and time"
+                        type="datetime-local"
+                        onChange={e => {
+                            setValue(e.target.value)
+                        }}
+                        value={value as string}
+                        onBlur={onBlur}
+                    />
+                );
+            }
+            else if (datatype === 'Date') {
+                return (
+                    <input
+                        aria-label="Date"
+                        type="date"
+                        onChange={e => {
+                            setValue(e.target.value)
+                        }}
+                        value={value as string}
+                        onBlur={onBlur}
+                    />
+                )
+            }
+            else if (datatype === 'Boolean') {
+                return (
+                    <select
+                        style={{ width: "100%", border: 'none' }}
+                        value={value as string}
+                        onChange={(e) => setValue(e.currentTarget.value)}
+                        onBlur={onBlur}
+                    >
+                        <option value=""></option>
+                        <option value="True">True</option>
+                        <option value="False">False</option>
+                    </select>
+                )
+            }
         },
     }
 
@@ -145,12 +193,12 @@ export default function DataTable({ columnData, sheetID }) {
         if (!sheetData) setColumns([])
         else if (sheetData.columnData.length === 0 || !sheetData.columnData[0].columnID || !sheetData.columnData[0].columnLabel) setColumns([])
         else {
-            const formatedColumns = sheetData?.columnData.reduce((acc: columnDefType[], column: columnType) => {
+            const formatedColumns = sheetData?.columnData.reduce((acc: TColumnDef[], column: TColumn) => {
                 return ([...acc, { accessorKey: `${column.columnLabel.trim().replace(' ', '_')}`, id: `${column.columnLabel.trim().replace(' ', '_')}`, header: column.columnLabel, datatype: column.datatype, columnID: column.columnID, colSheetID: column.colSheetID, positionIndex: column.positionIndex }])
             }, [])
             setColumns(formatedColumns)
-            setColumnOrder(formatedColumns.map((c: columnDefType) => c.id!))
-            setColumnPosition(formatedColumns.map((c: columnDefType) =>
+            setColumnOrder(formatedColumns.map((c: TColumnDef) => c.id!))
+            setColumnPosition(formatedColumns.map((c: TColumnDef) =>
                 ({ positionIndex: c.positionIndex, id: c.id!, colSheetID: c.colSheetID })
             ))
         }
@@ -159,7 +207,7 @@ export default function DataTable({ columnData, sheetID }) {
             setData([])
             setRowColResID({})
         }
-        else if (sheetData.responses.length === 0) {
+        else if (sheetData.responses.length === 0 || !sheetData.responses[0].rowID) {
             setData([])
             setRowColResID({})
         }
@@ -259,15 +307,14 @@ export default function DataTable({ columnData, sheetID }) {
     if (isPending) return 'Loading sheet...'
     else if (fetchSheetDataError) return 'An error has occurred: ' + fetchSheetDataError.message
     else return (
-        // NOTE: This provider creates div elements, so don't nest inside of <table> elements
         <>
-            <DndContext
-                collisionDetection={closestCenter}
-                modifiers={[restrictToHorizontalAxis]}
-                onDragEnd={handleDragEnd}
-                sensors={sensors}
-            >
-                <div style={{ padding: '8px' }}>
+            <div style={{ padding: '8px' }}>
+                <DndContext
+                    collisionDetection={closestCenter}
+                    modifiers={[restrictToHorizontalAxis]}
+                    onDragEnd={handleDragEnd}
+                    sensors={sensors}
+                >
                     <table {...{
                         style: {
                             width: table.getCenterTotalSize(),
@@ -276,13 +323,16 @@ export default function DataTable({ columnData, sheetID }) {
                         <thead>
                             {table.getHeaderGroups().map(headerGroup => (
                                 <tr key={headerGroup.id}>
-                                    <th className='add-column' onClick={() => setPopperDisplayState(true)}>+ column</th>
+                                    <th className='add-column' onClick={() => setNewColumnPopperDisplayState(true)}>+ column</th>
                                     <SortableContext
                                         items={columnOrder}
                                         strategy={horizontalListSortingStrategy}
                                     >
                                         {headerGroup.headers.map(header => (
-                                            <DraggableTableHeader key={header.id} header={header} table={table} columnResizeMode={columnResizeMode} />
+                                            <DraggableTableHeader
+                                                key={header.id} header={header} table={table} columnResizeMode={columnResizeMode}
+                                                setColPopupState={setColPopupState}
+                                            />
                                         ))}
                                     </SortableContext>
                                 </tr>
@@ -292,12 +342,10 @@ export default function DataTable({ columnData, sheetID }) {
                                     <th>#</th>
                                     {headerGroup.headers.map((header, index) => {
                                         return (
-                                            // header.column.getCanFilter() ? (
                                             <th key={`filter - ${index}`}>
                                                 <ColumnFilter column={header.column}
                                                     table={table} />
                                             </th>
-                                            // ) : null
                                         )
                                     })}
                                 </tr>
@@ -306,7 +354,18 @@ export default function DataTable({ columnData, sheetID }) {
                         <tbody>
                             {table.getRowModel().rows.map((row, index) => (
                                 <tr key={row.id}>
-                                    <td>{index + 1}</td>
+                                    <td className='rowSelectStyle' onClick={(event) => {
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        const position = {
+                                            top: rect.bottom + window.scrollY,  // Position just below the header
+                                            left: rect.left + window.scrollX,   // Align with the header's left edge
+                                        };
+                                        setRowPopupState(() => ({
+                                            selectedRowID: row.original.rowID,
+                                            position: position,
+                                            rowOptionPopperDisplayState: true
+                                        }))
+                                    }}>{index + 1}</td>
                                     {row.getVisibleCells().map(cell => (
                                         <SortableContext
                                             key={cell.id}
@@ -320,7 +379,6 @@ export default function DataTable({ columnData, sheetID }) {
                             ))}
                         </tbody>
                     </table>
-                    <Tooltip message={''} visible={tooltipRowVisible} />
                     {
                         newRowMutateIsPending ?
                             <div>Adding new row...</div> :
@@ -328,71 +386,86 @@ export default function DataTable({ columnData, sheetID }) {
                                 + New
                             </div>
                     }
-                </div>
-            </DndContext>
-            <div className="d-flex padding-2 gap-2">
-                <button
-                    className="border rounded p-1"
-                    onClick={() => table.setPageIndex(0)}
-                    disabled={!table.getCanPreviousPage()}
-                >
-                    {'<<'}
-                </button>
-                <button
-                    className="border rounded p-1"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                >
-                    {'<'}
-                </button>
-                <button
-                    className="border rounded p-1"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                >
-                    {'>'}
-                </button>
-                <button
-                    className="border rounded p-1"
-                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                    disabled={!table.getCanNextPage()}
-                >
-                    {'>>'}
-                </button>
-                <span className="flex items-center gap-1">
-                    <div>Page</div>
-                    <strong>
-                        {table.getState().pagination.pageIndex + 1} of{' '}
-                        {table.getPageCount()}
-                    </strong>
-                </span>
-                <span className="flex items-center gap-1">
-                    | Go to page:
-                    <input
-                        type="number"
-                        defaultValue={table.getState().pagination.pageIndex + 1}
+                </DndContext>
+                <div className="d-flex padding-2 gap-2">
+                    <button
+                        className="border rounded p-1"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                    >
+                        {'<<'}
+                    </button>
+                    <button
+                        className="border rounded p-1"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                    >
+                        {'<'}
+                    </button>
+                    <button
+                        className="border rounded p-1"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                    >
+                        {'>'}
+                    </button>
+                    <button
+                        className="border rounded p-1"
+                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                        disabled={!table.getCanNextPage()}
+                    >
+                        {'>>'}
+                    </button>
+                    <span className="flex items-center gap-1">
+                        <div>Page</div>
+                        <strong>
+                            {table.getState().pagination.pageIndex + 1} of{' '}
+                            {table.getPageCount()}
+                        </strong>
+                    </span>
+                    <span className="flex items-center gap-1">
+                        | Go to page:
+                        <input
+                            type="number"
+                            defaultValue={table.getState().pagination.pageIndex + 1}
+                            onChange={e => {
+                                const page = e.target.value ? Number(e.target.value) - 1 : 0
+                                table.setPageIndex(page)
+                            }}
+                            className="filterInput pageInput"
+                        />
+                    </span>
+                    <select
+                        value={table.getState().pagination.pageSize}
                         onChange={e => {
-                            const page = e.target.value ? Number(e.target.value) - 1 : 0
-                            table.setPageIndex(page)
+                            table.setPageSize(Number(e.target.value))
                         }}
-                        className="filterInput pageInput"
-                    />
-                </span>
-                <select
-                    value={table.getState().pagination.pageSize}
-                    onChange={e => {
-                        table.setPageSize(Number(e.target.value))
-                    }}
-                >
-                    {[10, 20, 30, 40, 50].map(pageSize => (
-                        <option key={pageSize} value={pageSize}>
-                            Show {pageSize}
-                        </option>
-                    ))}
-                </select>
+                    >
+                        {[10, 20, 30, 40, 50].map(pageSize => (
+                            <option key={pageSize} value={pageSize}>
+                                Show {pageSize}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div>{table.getRowModel().rows.length} Rows</div>
+                <AddColumnPopper
+                    columns={columnData} existColumns={columns}
+                    newColumnPopperDisplayState={newColumnPopperDisplayState}
+                    setNewColumnPopperDisplayState={setNewColumnPopperDisplayState}
+                    maxExistColumns={columns.length}
+                    sheetID={sheetID}
+                />
+                <RowOptionPopper
+                    rowPopupState={rowPopupState} setRowPopupState={setRowPopupState}
+                />
+                <ColumnOptionPopper
+                    colPopupState={colPopupState} setColPopupState={setColPopupState}
+                />
             </div>
-            <div>{table.getRowModel().rows.length} Rows</div>
-            <AddColumnPopper columns={columnData} existColumns={columns} popperDisplayState={popperDisplayState} setPopperDisplayState={setPopperDisplayState} maxExistColumns={columns.length} sheetID={sheetID} />
+            <Tooltip message={colPosTooltipMessage} visible={colPosTooltipVisible} className="tooltipCenter" />
+            <Tooltip message={tooltipResponseMessage} visible={tooltipResponseVisible} className="tooltipCenter" />
+            <Tooltip message={tooltipAddRowMessage} visible={tooltipAddRowVisible} className="tooltipCenter" />
         </>
     )
 }
