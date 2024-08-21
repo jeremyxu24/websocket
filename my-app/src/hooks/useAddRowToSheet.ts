@@ -3,12 +3,12 @@ import { postNewRow } from "../api/postNewRowToSheetAPI";
 import { useState } from "react";
 import { queryClient } from "../lib/queryClient";
 
-export default function useAddRowToSheet(sheetID: number) {
+export default function useAddRowToSheet() {
     const [tooltipAddRowVisible, setToolAddRowtipVisible] = useState(false);
     const [tooltipAddRowMessage, setTooltipAddRowMessage] = useState<string>('');
 
     const { mutate: newRowMutate, isSuccess: newRowMutateIsSuccess, isError: newRowMutateIsError, isPending: newRowMutateIsPending, error: newrowMutateError } = useMutation({
-        mutationFn: (newRow: { rowNumber: number }) => postNewRow({ ...newRow, sheetID })
+        mutationFn: (sheetID: { sheetID: number }) => postNewRow(sheetID)
         , onSuccess: () => {
             // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['sheetData'] })

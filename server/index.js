@@ -1,17 +1,52 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require("socket.io");
+// const socketIo = require('socket.io');
 const mySQLConnection = require('./modules/mysqlConnection')
 const port = 4000;
 
 const app = express();
 
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: ["http://localhost:5173", "http://localhost:5174"]
+    }
+});
+
 app.use(cors())
 
 app.use(express.json())
 
+io.on('connection', (socket) => {
+    console.log('A user connected');
+
+    // Join a specific room for a sheet
+    socket.on('joinSheet', ({ sheetID }) => {
+        socket.join(sheetID);
+        console.log(`User joined sheet ${sheetID}`);
+    });
+
+    // Leave the room when the user exits the sheet
+    socket.on('leaveSheet', ({ sheetID }) => {
+        socket.leave(sheetID);
+        console.log(`User left sheet ${sheetID}`);
+    });
+
+    // Notify all users in the same sheet to re-fetch data
+    function notifySheetUpdate(sheetID) {
+        io.to(sheetID).emit('invalidateSheet');
+    }
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
 app.get('/api/sheet/get/:sheetID', (req, res, next) => {
     const { sheetID } = req.params;
-    const query = `SELECT s.sheetID, s.directoryID, s.sheetLabel, s.sheetURL, cs.colSheetID, cs.columnID, c.columnLabel, c.datatype, cs.positionIndex, r.rowID, r.rowNumber, rp.value, rp.responseID
+    const query = `SELECT s.sheetID, s.directoryID, s.sheetLabel, s.sheetURL, cs.colSheetID, cs.columnID, c.columnLabel, c.datatype, cs.positionIndex, r.rowID, rp.value, rp.responseID
     FROM spreadsheet.sheet AS s 
     LEFT JOIN spreadsheet.colSheetRel AS cs ON cs.sheetID = s.sheetID 
     LEFT JOIN spreadsheet.column AS c ON c.columnID = cs.columnID 
@@ -152,141 +187,30 @@ app.get('/api/directory/get/:parentID', (req, res, next) => {
     // mySQLConnection.end()
 })
 
-app.post('/api/sheet/create/newColumnToSheet', (req, res, next) => {
-    const { sheetID, selectedColumnID, selectedIndex } = req.body;
-    // check if column exist in this sheet to prevent duplicate
-    const checkingQuery = `SELECT colSheetID FROM spreadsheet.colSheetRel 
-    WHERE sheetID = ?
-    AND columnID = ?`;
-    const checkingParams = [sheetID, selectedColumnID];
-    mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
-        if (err) {
-            console.log(err)
-            return res.status(500).json({ message: 'Bad connection' })
-        }
-        if (results.length > 0) {
-            return res.status(409).json({ message: 'Duplicate column found in record' })
-        }
-        // shift all existing columns after given positionIndex by 1 to make space for new column 
-        const query = `
-        UPDATE spreadsheet.colSheetRel
-            SET positionIndex = positionIndex + 1
-            WHERE sheetID = ?
-            AND positionIndex >= ?;
-        INSERT INTO spreadsheet.colSheetRel (sheetID, columnID, positionIndex)
-            VALUES (?, ?, ?);`;
-        const params = [sheetID, selectedIndex, sheetID, selectedColumnID, selectedIndex];
-        mySQLConnection.query(query, params, (err, results) => {
-            if (err) {
-                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
-                console.log(err)
-                res.status(500).json({ message: 'Bad connection' })
-            }
-            res.status(201).json(results)
-        })
-    })
-})
-
-app.post('/api/sheet/create/newRowToSheet', (req, res, next) => {
-    const { sheetID, rowNumber } = req.body;
-    // check if column exist in this sheet to prevent duplicate
-    const checkingQuery = `SELECT rowID FROM spreadsheet.row 
-    WHERE sheetID = ?
-    AND rowNumber = ?`;
-    const checkingParams = [sheetID, rowNumber];
-    mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
-        if (err) {
-            console.log(err)
-            return res.status(500).json({ message: 'Bad connection' })
-        }
-        if (results.length > 0) {
-            return res.status(409).json({ message: 'Duplicate column found in record' })
-        }
-        // shift all existing columns after given positionIndex by 1 to make space for new column 
-        const query = `
-        INSERT INTO spreadsheet.row (sheetID, rowNumber)
-            VALUES (?, ?);`;
-        const params = [sheetID, rowNumber];
-        mySQLConnection.query(query, params, (err, results) => {
-            if (err) {
-                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
-                console.log(err)
-                res.status(500).json({ message: 'Bad connection' })
-            }
-            res.status(201).json(results)
-        })
-    })
-})
-
-app.post('/api/sheet/create/newResponseToSheet', (req, res, next) => {
-    const { value, responseID, rowID, colSheetID } = req.body;
+app.delete('/api/directory/delete/type/:type/id/:id', (req, res, next) => {
+    const { type, id } = req.params;
     let query;
-    let params;
-    let successMessage;
-    let statusCode;
-    if (!responseID) {
-        const checkingQuery = `SELECT responseID FROM spreadsheet.response
-        WHERE rowID = ?
-        AND colSheetID = ?`
-        const checkingParams = [rowID, colSheetID]
-        mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
-            if (err) {
-                console.log(err)
-                return res.status(500).json({ message: 'Bad connection' })
-            }
-            if (results.length > 0) {
-                query = `UPDATE spreadsheet.response
-                SET value = ?
-                WHERE responseID = ?`
-                params = [value, responseID]
-                successMessage = 'Successfully update response'
-                statusCode = 204
-            } else {
-                query = `INSERT INTO spreadsheet.response (rowID, value, colSheetID)
-                VALUES (?, ?, ?)`
-                params = [rowID, value, colSheetID]
-                successMessage = 'Successfully insert new response'
-                statusCode = 201
-            }
-            mySQLConnection.query(query, params, (err, results) => {
-                if (err) {
-                    console.log(err)
-                    return res.status(500).json({ message: 'Bad connection' })
-                }
-                res.status(statusCode).json({ message: successMessage })
-            })
-        })
+    const params = parseInt(id);
+    if (type === 'directory') {
+        query = `
+        DELETE FROM spreadsheet.directory
+        WHERE directoryID = ?
+        `
+    } else if (type === 'sheet') {
+        query = `
+        DELETE FROM spreadsheet.sheet
+        WHERE sheetID = ?
+        `
     } else {
-        query = `UPDATE spreadsheet.response
-        SET value = ?
-        WHERE responseID = ?`
-        params = [value, responseID]
-        successMessage = 'Successfully update response'
-        statusCode = 204
-        mySQLConnection.query(query, params, (err, results) => {
-            if (err) {
-                console.log(err)
-                return res.status(500).json({ message: 'Bad connection' })
-            }
-            res.status(statusCode).json({ message: successMessage })
-        })
+        res.status(405).json({ message: 'Type error' })
+        return
     }
-})
-
-app.patch('/api/sheet/patch/newColPosToSheet', (req, res, next) => {
-    const newColPos = req.body;
-    let query = '';
-    const params = [];
-    newColPos.forEach((position) => {
-        query += 'UPDATE spreadsheet.colSheetRel SET positionIndex = ? WHERE colSheetID = ?; '
-        params.push(position.positionIndex, position.colSheetID)
-    })
     mySQLConnection.query(query, params, (err, results) => {
         if (err) {
             console.log(err)
             return res.status(500).json({ message: 'Bad connection' })
         }
-        res.status(200).json({ message: 'Recieved' })
+        res.status(204).json({ messaged: 'Successfully deleted' })
     })
 })
 
@@ -345,36 +269,137 @@ app.get('/api/navigation/get/sheet/:sheetID', (req, res, next) => {
     })
 })
 
-app.delete('/api/directory/delete/type/:type/id/:id', (req, res, next) => {
-    const { type, id } = req.params;
-    console.log(type, id)
+app.post('/api/sheet/create/newColumnToSheet', (req, res, next) => {
+    const { sheetID, selectedColumnID, selectedIndex } = req.body;
+    // check if column exist in this sheet to prevent duplicate
+    const checkingQuery = `SELECT colSheetID FROM spreadsheet.colSheetRel 
+    WHERE sheetID = ?
+    AND columnID = ?`;
+    const checkingParams = [sheetID, selectedColumnID];
+    mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
+        if (err) {
+            console.log(err)
+            return res.status(500).json({ message: 'Bad connection' })
+        }
+        if (results.length > 0) {
+            return res.status(409).json({ message: 'Duplicate column found in record' })
+        }
+        // shift all existing columns after given positionIndex by 1 to make space for new column 
+        const query = `
+        UPDATE spreadsheet.colSheetRel
+            SET positionIndex = positionIndex + 1
+            WHERE sheetID = ?
+            AND positionIndex >= ?;
+        INSERT INTO spreadsheet.colSheetRel (sheetID, columnID, positionIndex)
+            VALUES (?, ?, ?);`;
+        const params = [sheetID, selectedIndex, sheetID, selectedColumnID, selectedIndex];
+        mySQLConnection.query(query, params, (err, results) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
+                console.log(err)
+                res.status(500).json({ message: 'Bad connection' })
+            }
+            io.to(sheetID).emit(`invalidateSheet`);
+            res.status(201).json(results)
+        })
+    })
+})
+
+app.post('/api/sheet/create/newRowToSheet', (req, res, next) => {
+    const { sheetID } = req.body;
+
+    const query = `INSERT INTO spreadsheet.row (sheetID)
+            VALUES (?);`;
+    const params = [sheetID];
+    mySQLConnection.query(query, params, (err, results) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: err.sqlMessage })
+            console.log(err)
+            res.status(500).json({ message: 'Bad connection' })
+        }
+        io.to(sheetID).emit(`invalidateSheet`);
+        res.status(201).json(results)
+    })
+})
+
+app.post('/api/sheet/create/newResponseToSheet', (req, res, next) => {
+    const { value, responseID, rowID, colSheetID, sheetID } = req.body;
     let query;
-    const params = parseInt(id);
-    if (type === 'directory') {
-        query = `
-        DELETE FROM spreadsheet.directory
-        WHERE directoryID = ?
-        `
-    } else if (type === 'sheet') {
-        query = `
-        DELETE FROM spreadsheet.sheet
-        WHERE sheetID = ?
-        `
+    let params;
+    let successMessage;
+    let statusCode;
+    if (!responseID) {
+        const checkingQuery = `SELECT responseID FROM spreadsheet.response
+        WHERE rowID = ?
+        AND colSheetID = ?`
+        const checkingParams = [rowID, colSheetID]
+        mySQLConnection.query(checkingQuery, checkingParams, (err, results) => {
+            if (err) {
+                console.log(err)
+                return res.status(500).json({ message: 'Bad connection' })
+            }
+            if (results.length > 0) {
+                query = `UPDATE spreadsheet.response
+                SET value = ?
+                WHERE responseID = ?`
+                params = [value, responseID]
+                successMessage = 'Successfully update response'
+                statusCode = 204
+            } else {
+                query = `INSERT INTO spreadsheet.response (rowID, value, colSheetID)
+                VALUES (?, ?, ?)`
+                params = [rowID, value, colSheetID]
+                successMessage = 'Successfully insert new response'
+                statusCode = 201
+            }
+            mySQLConnection.query(query, params, (err, results) => {
+                if (err) {
+                    console.log(err)
+                    return res.status(500).json({ message: 'Bad connection' })
+                }
+                io.to(sheetID).emit(`invalidateSheet`);
+                res.status(statusCode).json({ message: successMessage })
+            })
+        })
     } else {
-        res.status(405).json({ message: 'Type error' })
-        return
+        query = `UPDATE spreadsheet.response
+        SET value = ?
+        WHERE responseID = ?`
+        params = [value, responseID]
+        successMessage = 'Successfully update response'
+        statusCode = 204
+        mySQLConnection.query(query, params, (err, results) => {
+            if (err) {
+                console.log(err)
+                return res.status(500).json({ message: 'Bad connection' })
+            }
+            io.to(sheetID).emit(`invalidateSheet`);
+            res.status(statusCode).json({ message: successMessage })
+        })
     }
+})
+
+app.patch('/api/sheet/patch/newColPosToSheet', (req, res, next) => {
+    const { newColPos, sheetID } = req.body;
+    let query = '';
+    const params = [];
+    newColPos.forEach((position) => {
+        query += 'UPDATE spreadsheet.colSheetRel SET positionIndex = ? WHERE colSheetID = ?; '
+        params.push(position.positionIndex, position.colSheetID)
+    })
     mySQLConnection.query(query, params, (err, results) => {
         if (err) {
             console.log(err)
             return res.status(500).json({ message: 'Bad connection' })
         }
-        res.status(204).json({ messaged: 'Successfully deleted' })
+        io.to(sheetID).emit(`invalidateSheet`);
+        res.status(200).json({ message: 'Recieved' })
     })
 })
 
 app.delete('/api/sheet/delete/row/:rowID', (req, res, next) => {
     const { rowID } = req.params;
+    const { sheetID } = req.body;
     let query = `DELETE FROM spreadsheet.row
         WHERE rowID = ?`;
     const params = parseInt(rowID);
@@ -383,13 +408,14 @@ app.delete('/api/sheet/delete/row/:rowID', (req, res, next) => {
             console.log(err)
             return res.status(500).json({ message: 'Bad connection' })
         }
+        io.to(sheetID).emit(`invalidateSheet`);
         res.status(204).json({ messaged: 'Successfully deleted' })
     })
 })
 
 app.delete('/api/sheet/delete/column/:colSheetID', (req, res, next) => {
     const { colSheetID } = req.params;
-    console.log('colSheetID', colSheetID)
+    const { sheetID } = req.body;
     let query = `DELETE FROM spreadsheet.colSheetRel
         WHERE colSheetID = ?`;
     const params = parseInt(colSheetID);
@@ -398,10 +424,14 @@ app.delete('/api/sheet/delete/column/:colSheetID', (req, res, next) => {
             console.log(err)
             return res.status(500).json({ message: 'Bad connection' })
         }
+        io.to(sheetID).emit(`invalidateSheet`);
         res.status(204).json({ messaged: 'Successfully deleted' })
     })
 })
 
-app.listen(port, () => {
+// app.listen(port, () => {
+//     console.log(`Server is running on port ${port}`);
+// });
+server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });

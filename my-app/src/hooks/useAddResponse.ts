@@ -8,7 +8,7 @@ export default function useAddResponse() {
     const [tooltipResponseMessage, setTooltipResponseMessage] = useState<string>('');
 
     const { mutate: newResponseMutate, isSuccess: newResponseMutateIsSuccess, isError: newResponseMutateIsError, isPending: newResponseMutateIsPending, error: newResponseMutateError } = useMutation({
-        mutationFn: (newResponse: { value: number | string | Date | unknown, responseID: number | null, rowID: number, colSheetID: number }) => postNewResponse(newResponse)
+        mutationFn: (newResponse: { value: number | string | Date | unknown, responseID: number | null, rowID: number, colSheetID: number, sheetID: number }) => postNewResponse(newResponse)
         , onSuccess: () => {
             // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['sheetData'] })

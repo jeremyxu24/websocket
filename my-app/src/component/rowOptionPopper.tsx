@@ -7,8 +7,8 @@ import Tooltip from "./tooltip";
 import { TRowOptPopper } from "../type/tableType";
 
 export default function RowOptionPopper(
-    { rowPopupState, setRowPopupState }
-        : TRowOptPopper
+    { rowPopupState, setRowPopupState, sheetID }
+        : TRowOptPopper & { sheetID: number }
 ) {
 
     const popupContentRef = useRef<HTMLDivElement>(null);
@@ -30,7 +30,7 @@ export default function RowOptionPopper(
 
     const handleDeleteClick = () => {
         if (rowPopupState.selectedRowID === null) return
-        mutate(rowPopupState.selectedRowID)
+        mutate({ rowID: rowPopupState.selectedRowID, sheetID })
         setRowPopupState(() => ({
             selectedRowID: null,
             rowOptionPopperDisplayState: false,

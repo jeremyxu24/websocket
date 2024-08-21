@@ -7,8 +7,8 @@ import Tooltip from "./tooltip";
 import { TColumnOptPopper } from "../type/tableType";
 
 export default function ColumnOptionPopper(
-    { colPopupState, setColPopupState }
-        : TColumnOptPopper) {
+    { colPopupState, setColPopupState, sheetID }
+        : TColumnOptPopper & { sheetID: number }) {
 
     const popupContentRef = useRef<HTMLDivElement>(null);
     const { mutate, isPending, deleteColumnTooltipVisible, tooltipMessage } = useDeleteColumnFromSheet();
@@ -29,7 +29,7 @@ export default function ColumnOptionPopper(
 
     const handleDeleteClick = () => {
         if (!colPopupState.selectedColumnID) return
-        mutate(colPopupState.selectedColumnID)
+        mutate({ colSheetID: colPopupState.selectedColumnID, sheetID })
         setColPopupState(() => ({
             selectedColumnID: null,
             columnOptionPopperDisplayState: false,

@@ -8,7 +8,7 @@ export default function usePatchColumnPosition() {
     const [colPosTooltipMessage, setColPosTooltipMessage] = useState<string>('');
 
     const { mutate: patchColPosMutate, isSuccess: patchColPosMutateIsSuccess, isError: patchColPosMutateIsError, isPending: patchColPosMutateIsPending, error: patchColPosMutateError } = useMutation({
-        mutationFn: (newColPos: { positionIndex: number, id: string, colSheetID: number }[]) => patchColPosToSheet(newColPos)
+        mutationFn: (newColPos: { newColPos: { positionIndex: number, id: string, colSheetID: number }[], sheetID: number }) => patchColPosToSheet(newColPos)
         , onSuccess: () => {
             // Invalidate and refetch
             // queryClient.invalidateQueries({ queryKey: ['sheetData'] })

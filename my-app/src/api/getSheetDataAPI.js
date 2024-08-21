@@ -1,4 +1,7 @@
 // API for fetching sheet data (col/sheet relationship, rowid, response)
+import io from 'socket.io-client';
+
+const socket = io();
 
 export async function getSheetData(sheetID) {
     if (!sheetID) {

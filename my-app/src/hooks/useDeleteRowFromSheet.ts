@@ -7,7 +7,7 @@ export default function useDeleteRowFromSheet() {
     const [deleteRowTooltipVisible, setDeleteRowTooltipVisible] = useState(false);
     const [tooltipMessage, setTooltipMessage] = useState<string>('')
     const { mutate, isPending } = useMutation({
-        mutationFn: (rowID: number) => deleteRowFromSheet(rowID),
+        mutationFn: (payload: { rowID: number, sheetID: number }) => deleteRowFromSheet(payload),
         onSuccess: () => {
             // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['sheetData'] })

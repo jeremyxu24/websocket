@@ -17,6 +17,9 @@ import usePatchColumnPosition from "../hooks/usePatchColumnPosition";
 import RowOptionPopper from "./rowOptionPopper"
 import ColumnOptionPopper from "./columnOptionPopper";
 import { TColumn, TColumnDef, TColOptPopupState, TRowOptPopupState } from "../type/tableType";
+import { useQueryClient } from '@tanstack/react-query';
+import io from 'socket.io-client';
+let socket: any = null;
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
@@ -42,7 +45,7 @@ function useSkipper() {
 
 export default function DataTable({ columnData, sheetID }) {
     const { data: sheetData, isPending, error: fetchSheetDataError } = useFetchSheetData(sheetID);
-    const { newRowMutate, tooltipAddRowVisible, newRowMutateIsPending, tooltipAddRowMessage } = useAddRowToSheet(sheetID);
+    const { newRowMutate, tooltipAddRowVisible, newRowMutateIsPending, tooltipAddRowMessage } = useAddRowToSheet();
     const { newResponseMutate, tooltipResponseVisible, tooltipResponseMessage } = useAddResponse();
     const { patchColPosMutate, colPosTooltipVisible, colPosTooltipMessage } = usePatchColumnPosition();
 
@@ -66,6 +69,7 @@ export default function DataTable({ columnData, sheetID }) {
         columnOptionPopperDisplayState: false,
         position: { top: 0, left: 0 },
     });
+    const queryClient = useQueryClient();
 
     // Give our default column cell renderer editing superpowers!
     const defaultColumn: Partial<ColumnDef<TColumnDef>> = {
@@ -83,7 +87,7 @@ export default function DataTable({ columnData, sheetID }) {
 
                 const selectedColSheetRowID = `colSheet-${colSheetID}-row-${rowID}`
                 if (initialValue !== value) {
-                    newResponseMutate({ value, responseID: rowColResID[selectedColSheetRowID], rowID, colSheetID })
+                    newResponseMutate({ value, responseID: rowColResID[selectedColSheetRowID], rowID, colSheetID, sheetID })
                 }
             }
 
@@ -184,7 +188,7 @@ export default function DataTable({ columnData, sheetID }) {
         }
         const { changedPositions, updatedPositions } = trackChangedPositions(columnOrder, columnPosition)
         if (changedPositions.length < 1) return
-        patchColPosMutate(changedPositions)
+        patchColPosMutate({ newColPos: changedPositions, sheetID })
         setColumnPosition(updatedPositions)
     }, [columnOrder])
 
@@ -214,7 +218,13 @@ export default function DataTable({ columnData, sheetID }) {
         else {
             // setData
             let transformedObject: unknown[] = [];
-            sheetData.responses.forEach((row: { responseData: { columnLabel: string | null, rowNumber: number | null, value: string | null, responseID: number | null }[], rowID: number | null }) => {
+            sheetData.responses.forEach((row: {
+                responseData: {
+                    columnLabel: string | null,
+                    value: string | null,
+                    responseID: number | null
+                }[], rowID: number | null
+            }) => {
                 const newRow = Object.fromEntries(row.responseData.map((row) => {
                     const newKey = `${row.columnLabel?.replace(' ', '_')}`
                     return [newKey, row.value ? row.value : '']
@@ -238,6 +248,28 @@ export default function DataTable({ columnData, sheetID }) {
             setRowColResID(transformedObjectResID)
         }
     }, [sheetData])
+
+    useEffect(() => {
+        // Connect to the Socket.io server and join the room for the specific sheet
+        socket = io('http://localhost:4000', {
+            query: { sheetID } // Send sheetId as part of the connection query
+        });
+
+        socket.emit('joinSheet', { sheetID });
+
+        socket.on('invalidateSheet', () => {
+            // Invalidate the query to trigger a re-fetch when notified by the server
+            queryClient.invalidateQueries({ queryKey: ['sheetData'] });
+        });
+
+        // Clean up when the user leaves the sheet
+        return () => {
+            if (socket) {
+                socket.emit('leaveSheet', { sheetID });
+                socket.disconnect();
+            }
+        };
+    }, [sheetID, queryClient]);
 
     const table = useReactTable({
         data,
@@ -276,9 +308,6 @@ export default function DataTable({ columnData, sheetID }) {
                 )
             },
         },
-        // debugTable: true,
-        // debugHeaders: true,
-        // debugColumns: true,
     })
 
     // reorder columns after drag & drop
@@ -300,8 +329,7 @@ export default function DataTable({ columnData, sheetID }) {
     )
 
     function handleAddRow() {
-        const newRow = { rowNumber: data.length + 1 }
-        newRowMutate(newRow)
+        newRowMutate({ sheetID })
     }
 
     if (isPending) return 'Loading sheet...'
@@ -458,9 +486,11 @@ export default function DataTable({ columnData, sheetID }) {
                 />
                 <RowOptionPopper
                     rowPopupState={rowPopupState} setRowPopupState={setRowPopupState}
+                    sheetID={sheetID}
                 />
                 <ColumnOptionPopper
                     colPopupState={colPopupState} setColPopupState={setColPopupState}
+                    sheetID={sheetID}
                 />
             </div>
             <Tooltip message={colPosTooltipMessage} visible={colPosTooltipVisible} className="tooltipCenter" />

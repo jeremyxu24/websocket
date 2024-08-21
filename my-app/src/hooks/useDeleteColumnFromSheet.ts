@@ -8,7 +8,7 @@ export default function useDeleteColumnFromSheet() {
     const [tooltipMessage, setTooltipMessage] = useState<string>('')
 
     const { mutate, isPending } = useMutation({
-        mutationFn: (colSheetID: number) => deleteColumnFromSheet(colSheetID),
+        mutationFn: (payload: { colSheetID: number, sheetID: number }) => deleteColumnFromSheet(payload),
         onSuccess: () => {
             // Invalidate and refetch
             queryClient.invalidateQueries({ queryKey: ['sheetData'] })
